@@ -4,6 +4,7 @@ import type { SessionUser, Customer, CatalogMovie, MovieForm, MovieStatus, Cinem
 export const MOCK_USERS: (SessionUser & { password: string })[] = [
   { email: "valeria@moviesys.com", password: "Cinema2024", name: "Valeria Montoya", avatar: "VM", role: "cliente" },
   { email: "carlos@moviesys.com",  password: "Cine1234A",  name: "Carlos Herrera",  avatar: "CH", role: "administrador" },
+  { email: "recepcion@moviesys.com", password: "Caja2024A", name: "Recepcion Caja", avatar: "RC", role: "recepcionista" },
 ];
 
 // ─── Carousel films (guest left panel) ───────────────────────────────────────

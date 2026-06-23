@@ -7,6 +7,7 @@ export const useSessionStore = defineStore("session", () => {
   const user = ref<SessionUser | null>(null);
   const isAuthenticated = computed(() => Boolean(user.value));
   const isAdmin = computed(() => user.value?.role === "administrador");
+  const isReceptionist = computed(() => user.value?.role === "recepcionista");
 
   function login(email: string, password: string) {
     const found = MOCK_USERS.find((item) => item.email === email && item.password === password);
@@ -33,5 +34,5 @@ export const useSessionStore = defineStore("session", () => {
     user.value = null;
   }
 
-  return { user, isAuthenticated, isAdmin, login, register, updateUser, logout };
+  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout };
 });

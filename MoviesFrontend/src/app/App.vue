@@ -23,13 +23,20 @@ const adminLinks = [
   { label: "Cancelaciones", to: "/admin/cancelaciones" },
 ];
 
+const receptionLinks = [
+  { label: "Caja", to: "/recepcion/reservas" },
+  { label: "Funciones", to: "/reservas/funciones" },
+];
+
 const clientLinks = [
   { label: "Funciones", to: "/reservas/funciones" },
+  { label: "Peliculas", to: "/reservas/peliculas" },
+  { label: "Pagos", to: "/profile/payments" },
   { label: "Mis Reservas", to: "/reservas/mis-reservas" },
 ];
 
-const links = computed(() => session.isAdmin ? adminLinks : clientLinks);
-const publicLinks = [{ label: "Funciones", to: "/reservas/funciones" }];
+const links = computed(() => session.isAdmin ? adminLinks : session.isReceptionist ? receptionLinks : clientLinks);
+const publicLinks = [{ label: "Funciones", to: "/reservas/funciones" }, { label: "Peliculas", to: "/reservas/peliculas" }];
 const mobileLinks = computed(() => session.user ? links.value.slice(0, 4) : publicLinks);
 
 function go(to: string) {
@@ -88,8 +95,12 @@ function logout() {
                 </div>
                 <button class="dropdown-item" @click="go('/profile')"><User class="w-3.5 h-3.5" /> Mi perfil</button>
                 <button class="dropdown-item" @click="go('/change-password')"><Lock class="w-3.5 h-3.5" /> Cambiar contrasena</button>
-                <template v-if="!session.isAdmin">
+                <template v-if="session.isReceptionist">
+                  <button class="dropdown-item" @click="go('/recepcion/reservas')"><Ticket class="w-3.5 h-3.5" /> Caja</button>
+                </template>
+                <template v-else-if="!session.isAdmin">
                   <button class="dropdown-item" @click="go('/reservas/mis-reservas')"><Ticket class="w-3.5 h-3.5" /> Mis reservas</button>
+                  <button class="dropdown-item" @click="go('/profile/payments')"><Ticket class="w-3.5 h-3.5" /> Metodos de pago</button>
                 </template>
                 <template v-else>
                   <button class="dropdown-item" @click="go('/admin/reportes')"><Ticket class="w-3.5 h-3.5" /> Reportes</button>

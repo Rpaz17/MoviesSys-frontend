@@ -9,7 +9,7 @@ export interface SessionUser {
   name:   string;
   avatar: string;
   email:  string;
-  role:   "cliente" | "administrador";
+  role:   "cliente" | "administrador" | "recepcionista";
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ export interface Showtime {
 
 export type ReservationStatus = "pendiente" | "confirmada" | "cancelada";
 export type PaymentStatus = "pendiente" | "pagado" | "reembolsado";
-export type PaymentMethod = "tarjeta" | "efectivo" | "paypal";
+export type PaymentMethod = "tarjeta" | "efectivo";
 export type RefundStatus = "no-aplica" | "pendiente" | "procesando" | "completado";
 export type CouponType = "porcentaje" | "monto";
 

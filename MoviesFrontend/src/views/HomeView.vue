@@ -67,11 +67,28 @@ function logout() {
             <span class="hv-card-desc">Politica y reembolsos</span>
           </button>
         </template>
+        <template v-else-if="session.isReceptionist">
+          <button class="hv-card hv-green" @click="router.push('/recepcion/reservas')">
+            <Ticket class="hv-card-icon" />
+            <span class="hv-card-title">Caja</span>
+            <span class="hv-card-desc">Ver reservas y cobrar efectivo</span>
+          </button>
+          <button class="hv-card hv-gold" @click="router.push('/reservas/funciones')">
+            <CalendarClock class="hv-card-icon" />
+            <span class="hv-card-title">Funciones</span>
+            <span class="hv-card-desc">Consultar cartelera por cine</span>
+          </button>
+        </template>
         <template v-else>
           <button class="hv-card hv-green" @click="router.push('/reservas/funciones')">
             <Ticket class="hv-card-icon" />
             <span class="hv-card-title">Funciones</span>
             <span class="hv-card-desc">Elegir funcion y reservar</span>
+          </button>
+          <button class="hv-card hv-blue" @click="router.push('/reservas/peliculas')">
+            <CalendarClock class="hv-card-icon" />
+            <span class="hv-card-title">Peliculas</span>
+            <span class="hv-card-desc">Ver cines disponibles</span>
           </button>
           <button class="hv-card hv-gold" @click="router.push('/reservas/mis-reservas')">
             <Ticket class="hv-card-icon" />

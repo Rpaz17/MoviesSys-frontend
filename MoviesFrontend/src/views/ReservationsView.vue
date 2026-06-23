@@ -3,25 +3,59 @@
     <div class="section-header">
       <div>
         <p class="eyebrow">Reserva de entradas</p>
-        <h1>{{ mode === "mine" ? "Mis reservas" : selectedShowtime ? "Selecciona tus asientos" : "Funciones disponibles" }}</h1>
+        <h1>{{ pageTitle }}</h1>
       </div>
       <button v-if="selectedShowtime" class="ghost-button" type="button" @click="clearFlow">Volver a funciones</button>
     </div>
 
-    <div v-if="mode === 'functions' && !selectedShowtime" class="grid-list">
-      <article v-for="showtime in availableShowtimes" :key="showtime.id" class="card function-card">
-        <img :src="imageUrl(movieFor(showtime.movieId)?.img)" :alt="movieFor(showtime.movieId)?.title" />
+    <div v-if="(mode === 'functions' || mode === 'movies') && !selectedShowtime" class="filters-card card">
+      <input v-model.trim="search" class="input" placeholder="Buscar pelicula" />
+      <select v-model="genreFilter" class="input"><option value="">Todos los generos</option><option v-for="genre in genres" :key="genre" :value="genre">{{ genre }}</option></select>
+      <select v-model="languageFilter" class="input"><option value="">Todos los idiomas</option><option v-for="language in languages" :key="language" :value="language">{{ language }}</option></select>
+      <input v-model="dateFilter" class="input" type="date" />
+      <select v-model="cityFilter" class="input"><option value="">Todas las ciudades</option><option v-for="city in cities" :key="city" :value="city">{{ city }}</option></select>
+      <select v-model="cinemaFilter" class="input"><option value="">Todos los cines</option><option v-for="cinema in cinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select>
+    </div>
+
+    <div v-if="mode === 'movies' && !selectedShowtime" class="grid-list">
+      <article v-for="movie in availableMovies" :key="movie.id" class="card function-card">
+        <img :src="imageUrl(movie.img)" :alt="movie.title" />
         <div class="card-body">
-          <span class="pill">{{ showtime.format }}</span>
-          <h2>{{ movieFor(showtime.movieId)?.title }}</h2>
-          <p>{{ cinemaFor(showtime.cinemaId)?.name }} · {{ roomFor(showtime.roomId)?.name }}</p>
-          <p>{{ showtime.date }} · {{ showtime.time }}</p>
-          <div class="row-between">
-            <strong>{{ money(priceFor(showtime.format)) }}</strong>
-            <button class="primary-button" type="button" @click="startReservation(showtime)">Reservar</button>
-          </div>
+          <span class="pill">{{ movie.status }}</span>
+          <h2>{{ movie.title }}</h2>
+          <p>{{ movie.genre }} · {{ movie.language }} · {{ movie.duration }}</p>
+          <p>Cines: {{ movieCinemas(movie.id).join(", ") || "Sin funciones activas" }}</p>
+          <button class="primary-button" type="button" :disabled="!firstShowtimeForMovie(movie.id)" @click="startReservation(firstShowtimeForMovie(movie.id)!)">Ver funciones</button>
         </div>
       </article>
+    </div>
+
+    <div v-else-if="mode === 'functions' && !selectedShowtime" class="cinema-groups">
+      <section v-for="group in showtimeGroups" :key="group.cinema.id" class="cinema-group">
+        <div class="group-heading">
+          <div>
+            <h2>{{ group.cinema.name }}</h2>
+            <p>{{ group.cinema.city }} · {{ group.cinema.address }}</p>
+          </div>
+          <span class="pill">{{ group.items.length }} funciones</span>
+        </div>
+        <div class="grid-list">
+          <article v-for="showtime in group.items" :key="showtime.id" class="card function-card">
+            <img :src="imageUrl(movieFor(showtime.movieId)?.img)" :alt="movieFor(showtime.movieId)?.title" />
+            <div class="card-body">
+              <span class="pill">{{ showtime.format }}</span>
+              <h2>{{ movieFor(showtime.movieId)?.title }}</h2>
+              <p>{{ roomFor(showtime.roomId)?.name }}</p>
+              <p>{{ showtime.date }} · {{ showtime.time }}</p>
+              <div class="row-between">
+                <strong>{{ money(priceFor(showtime.format)) }}</strong>
+                <button class="primary-button" type="button" @click="startReservation(showtime)">Reservar</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+      <div v-if="showtimeGroups.length === 0" class="empty-state card">No hay funciones con esos filtros.</div>
     </div>
 
     <div v-else-if="mode === 'functions' && selectedShowtime" class="booking-grid">
@@ -54,6 +88,7 @@
         <p>{{ selectedCinema?.name }} · {{ selectedRoom?.name }}</p>
         <p>{{ selectedShowtime.date }} · {{ selectedShowtime.time }}</p>
         <div class="summary-line"><span>Asientos</span><strong class="selected-seat-list">{{ selectedSeats.join(", ") || "Sin seleccionar" }}</strong></div>
+        <div class="summary-line countdown"><span>Bloqueo</span><strong>{{ lockCountdown }}</strong></div>
         <div class="summary-line"><span>Subtotal</span><strong>{{ money(subtotal) }}</strong></div>
         <div class="coupon-row">
           <input v-model.trim="couponCode" class="input" placeholder="Cupón" />
@@ -67,8 +102,6 @@
           Método de pago
           <select v-model="paymentMethod" class="input">
             <option value="tarjeta">Tarjeta</option>
-            <option value="paypal">PayPal</option>
-            <option value="efectivo">Efectivo</option>
           </select>
         </label>
         <div v-if="paymentMethod === 'tarjeta'" class="payment-grid">
@@ -80,6 +113,35 @@
         <button class="primary-button full" type="button" :disabled="!canConfirm" @click="confirmReservation">Confirmar y pagar</button>
         <p v-if="confirmation" class="success-box">{{ confirmation }}</p>
       </aside>
+    </div>
+
+    <div v-else-if="mode === 'result'" class="result-card card">
+      <span class="pill">Pago exitoso</span>
+      <h2>Reserva {{ resultReservation?.id }}</h2>
+      <p>{{ movieFor(resultReservation?.movieId ?? "")?.title }} · {{ resultReservation?.date }} {{ resultReservation?.time }}</p>
+      <p>Asientos {{ resultReservation?.seats.join(", ") }} · Total {{ money(resultReservation?.total ?? 0) }}</p>
+      <div class="form-actions">
+        <button class="ghost-button" type="button" @click="router.push('/reservas/mis-reservas')">Ver mis reservas</button>
+        <button class="primary-button" type="button" @click="router.push('/reservas/funciones')">Comprar otra entrada</button>
+      </div>
+    </div>
+
+    <div v-else-if="mode === 'reception'" class="stack">
+      <div class="filters-card card">
+        <input v-model.trim="receptionSearch" class="input" placeholder="Buscar por reserva, cliente o pelicula" />
+      </div>
+      <article v-for="reservation in receptionReservations" :key="reservation.id" class="card reservation-row">
+        <div>
+          <span class="pill">{{ reservation.paymentStatus }}</span>
+          <h2>{{ reservation.id }} · {{ reservation.customerName }}</h2>
+          <p>{{ movieFor(reservation.movieId)?.title }} · {{ cinemaFor(reservation.cinemaId)?.name }}</p>
+          <p>{{ reservation.date }} {{ reservation.time }} · Asientos {{ reservation.seats.join(", ") }}</p>
+        </div>
+        <div class="row-actions">
+          <strong>{{ money(reservation.total) }}</strong>
+          <button v-if="reservation.paymentStatus !== 'pagado'" class="primary-button" type="button" @click="reservationsStore.payReservation(reservation.id, 'efectivo')">Pagar efectivo</button>
+        </div>
+      </article>
     </div>
 
     <div v-else class="stack">
@@ -114,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useCatalogStore } from "../stores/catalog";
@@ -140,11 +202,68 @@ const cardExpiry = ref("");
 const cardCvv = ref("");
 const confirmation = ref("");
 const cancelTarget = ref<Reservation | null>(null);
+const search = ref("");
+const genreFilter = ref("");
+const languageFilter = ref("");
+const dateFilter = ref("");
+const cityFilter = ref("");
+const cinemaFilter = ref("");
+const receptionSearch = ref("");
+const lockedUntil = ref(0);
+const now = ref(Date.now());
+let timer: number | undefined;
 
 const mode = computed(() => String(route.meta.mode ?? "functions"));
 const selectedShowtimeId = computed(() => String(route.query.showtime || ""));
-const availableShowtimes = computed(() => catalog.showtimes.filter((item) => item.status === "activo"));
+const pageTitle = computed(() => {
+  if (mode.value === "mine") return "Mis reservas";
+  if (mode.value === "movies") return "Peliculas con cines disponibles";
+  if (mode.value === "result") return "Resultado de pago";
+  if (mode.value === "reception") return "Caja de recepcion";
+  return selectedShowtime.value ? "Selecciona tus asientos" : "Funciones disponibles";
+});
+const availableShowtimes = computed(() => catalog.showtimes.filter((item) => {
+  if (item.status !== "activo") return false;
+  const movie = movieFor(item.movieId);
+  const cinema = cinemaFor(item.cinemaId);
+  const query = search.value.toLowerCase();
+  return (!query || movie?.title.toLowerCase().includes(query))
+    && (!genreFilter.value || movie?.genre === genreFilter.value)
+    && (!languageFilter.value || movie?.language === languageFilter.value)
+    && (!dateFilter.value || item.date === dateFilter.value)
+    && (!cityFilter.value || cinema?.city === cityFilter.value)
+    && (!cinemaFilter.value || item.cinemaId === cinemaFilter.value);
+}));
+const availableMovies = computed(() => catalog.movies.filter((movie) => {
+  const query = search.value.toLowerCase();
+  return movie.status !== "inactivo"
+    && (!query || movie.title.toLowerCase().includes(query))
+    && (!genreFilter.value || movie.genre === genreFilter.value)
+    && (!languageFilter.value || movie.language === languageFilter.value)
+    && movieCinemas(movie.id).length > 0;
+}));
+const showtimeGroups = computed(() => catalog.cinemas
+  .map((cinema) => ({
+    cinema,
+    items: availableShowtimes.value.filter((showtime) => showtime.cinemaId === cinema.id),
+  }))
+  .filter((group) => group.items.length > 0));
+const genres = computed(() => [...new Set(catalog.movies.map((movie) => movie.genre))]);
+const languages = computed(() => [...new Set(catalog.movies.map((movie) => movie.language))]);
+const cities = computed(() => [...new Set(catalog.cinemas.map((cinema) => cinema.city))]);
+const cinemas = computed(() => catalog.cinemas.filter((cinema) => !cityFilter.value || cinema.city === cityFilter.value));
 const myReservations = computed(() => reservations.value.filter((item) => item.customerEmail === session.user?.email));
+const resultReservation = computed(() => reservations.value.find((item) => item.id === route.query.id));
+const receptionReservations = computed(() => {
+  const query = receptionSearch.value.toLowerCase();
+  return reservations.value.filter((reservation) => {
+    const movie = movieFor(reservation.movieId)?.title.toLowerCase() ?? "";
+    return !query
+      || reservation.id.toLowerCase().includes(query)
+      || reservation.customerName.toLowerCase().includes(query)
+      || movie.includes(query);
+  });
+});
 
 const selectedMovie = computed(() => selectedShowtime.value ? catalog.movieById(selectedShowtime.value.movieId) : undefined);
 const selectedCinema = computed(() => selectedShowtime.value ? catalog.cinemaById(selectedShowtime.value.cinemaId) : undefined);
@@ -167,13 +286,33 @@ const seats = computed(() => {
   return Array.from({ length: room.rows * room.cols }, (_, index) => `${String.fromCharCode(65 + Math.floor(index / room.cols))}${(index % room.cols) + 1}`);
 });
 const refundEstimate = computed(() => cancelTarget.value ? calculateRefund(cancelTarget.value) : 0);
+const lockCountdown = computed(() => {
+  const remaining = Math.max(0, lockedUntil.value - now.value);
+  const minutes = Math.floor(remaining / 60000);
+  const seconds = Math.floor((remaining % 60000) / 1000);
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+});
 
 watch(() => route.path, () => clearFlow());
+watch([cityFilter, cinemaFilter], () => {
+  if (cinemaFilter.value && !cinemas.value.some((cinema) => cinema.id === cinemaFilter.value)) cinemaFilter.value = "";
+});
 watch(selectedShowtimeId, (id) => {
   if (!id || mode.value !== "functions") return;
   const showtime = availableShowtimes.value.find((item) => item.id === id);
   if (showtime) startReservation(showtime);
 }, { immediate: true });
+
+onMounted(() => {
+  timer = window.setInterval(() => {
+    now.value = Date.now();
+    if (selectedShowtime.value && lockedUntil.value <= now.value) clearFlow();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (timer) window.clearInterval(timer);
+});
 
 function movieFor(id: string) {
   return catalog.movieById(id);
@@ -188,6 +327,7 @@ function roomFor(id: string) {
 }
 
 function imageUrl(id?: string) {
+  if (id?.startsWith("data:") || id?.startsWith("http")) return id;
   return `https://images.unsplash.com/${id ?? "photo-1489599849927-2ee91cede3ba"}?auto=format&fit=crop&w=900&q=80`;
 }
 
@@ -203,6 +343,7 @@ function startReservation(showtime: Showtime) {
   selectedShowtime.value = showtime;
   selectedSeats.value = [];
   confirmation.value = "";
+  lockedUntil.value = Date.now() + 5 * 60 * 1000;
 }
 
 function clearFlow() {
@@ -261,7 +402,19 @@ function confirmReservation() {
   };
   reservationsStore.addReservation(reservation, appliedCouponId.value || undefined);
   confirmation.value = `Reserva ${reservation.id} confirmada.`;
-  router.push("/reservas/mis-reservas");
+  router.push(`/reservas/resultado?id=${reservation.id}`);
+}
+
+function movieCinemas(movieId: string) {
+  const cinemaNames = availableShowtimes.value
+    .filter((showtime) => showtime.movieId === movieId)
+    .map((showtime) => cinemaFor(showtime.cinemaId)?.name)
+    .filter(Boolean) as string[];
+  return [...new Set(cinemaNames)];
+}
+
+function firstShowtimeForMovie(movieId: string) {
+  return availableShowtimes.value.find((showtime) => showtime.movieId === movieId);
 }
 
 function openCancel(reservation: Reservation) {
@@ -290,6 +443,9 @@ h1 { font-size: clamp(22px, 3vw, 34px); font-weight: 600; color: #f0ece4; margin
 h2 { color: #f0ece4; margin: 0; font-size: 1rem; font-weight: 600; }
 p { color: #7a7590; margin: 0; font-size: .875rem; }
 .grid-list { width: min(100%, 1100px); margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.cinema-groups { width: min(100%, 1100px); margin: 0 auto; display: grid; gap: 24px; }
+.cinema-group { display: grid; gap: 12px; }
+.group-heading { display: flex; justify-content: space-between; gap: 12px; align-items: end; border-bottom: 1px solid rgba(200,169,110,.1); padding-bottom: 10px; }
 .function-card { overflow: hidden; padding: 0; transition: transform .15s, border-color .15s; }
 .function-card:hover { transform: translateY(-2px); border-color: rgba(200,169,110,0.22); }
 .function-card img { width: 100%; height: 170px; object-fit: cover; }

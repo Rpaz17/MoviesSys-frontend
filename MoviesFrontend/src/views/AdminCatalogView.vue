@@ -38,9 +38,13 @@
           <h2>{{ movie.title }}</h2>
           <p>{{ movie.genre }} · {{ movie.duration }} · {{ movie.rating }}</p>
           <p>{{ movie.director }}</p>
+          <p>Cines disponibles: {{ cinemasForMovie(movie.id).join(", ") || "Sin funciones activas" }}</p>
           <div class="row-between">
             <span>{{ movie.reservations }} reservas</span>
-            <button class="ghost-button" type="button" @click="loadMovie(movie.id)">Editar</button>
+            <div class="row-actions">
+              <button class="ghost-button" type="button" @click="catalog.toggleMovieStatus(movie.id)">Estado</button>
+              <button class="ghost-button" type="button" @click="loadMovie(movie.id)">Editar</button>
+            </div>
           </div>
         </div>
       </article>
@@ -62,14 +66,14 @@
             <option value="inactivo">Inactivo</option>
           </select>
         </label>
-      </div>
-      <div class="room-picker">
-        <span>Salas asignadas</span>
-        <label v-for="room in catalog.rooms" :key="room.id" class="check-row">
-          <input v-model="movieRoomIds" type="checkbox" :value="room.id" />
-          {{ room.cinema }} · {{ room.name }} · {{ room.type }}
+        <label class="field wide">Imagen de película
+          <input class="input" type="file" accept="image/*" @change="loadMovieImage" />
+        </label>
+        <label class="field wide">URL o ID de imagen
+          <input v-model="movieForm.img" class="input" placeholder="photo-1489599849927-2ee91cede3ba o https://..." />
         </label>
       </div>
+      <img v-if="movieForm.img" class="poster-preview" :src="imageUrl(movieForm.img)" :alt="movieForm.title" />
       <div class="form-actions">
         <button class="ghost-button" type="button" @click="go('/admin/peliculas')">Cancelar</button>
         <button class="primary-button" type="submit">Guardar película</button>
@@ -78,21 +82,22 @@
 
     <div v-else-if="mode === 'cinemas'" class="grid-list">
       <article v-for="cinema in catalog.cinemas" :key="cinema.id" class="card catalog-card">
-        <img :src="imageUrl(cinema.img)" :alt="cinema.name" />
         <div class="card-body">
           <span class="pill">{{ cinema.status }}</span>
           <h2>{{ cinema.name }}</h2>
           <p>{{ cinema.city }} · {{ cinema.address }}</p>
           <p>{{ cinema.rooms }} salas · {{ cinema.functions }} funciones</p>
+          <button class="ghost-button" type="button" @click="loadCinema(cinema.id)">Editar</button>
         </div>
       </article>
     </div>
 
-    <form v-else-if="mode === 'createCinema'" class="card form-card" @submit.prevent="saveCinema">
+    <form v-else-if="mode === 'createCinema' || mode === 'editCinema'" class="card form-card" @submit.prevent="saveCinema">
       <div class="form-grid">
         <label class="field">Nombre<input v-model="cinemaForm.name" class="input" required /></label>
         <label class="field">Ciudad<select v-model="cinemaForm.city" class="input" required><option v-for="city in catalog.cities" :key="city.id" :value="city.name">{{ city.name }}</option></select></label>
         <label class="field wide">Dirección<input v-model="cinemaForm.address" class="input" required /></label>
+        <label class="field">Estado<select v-model="cinemaForm.status" class="input"><option>activo</option><option>mantenimiento</option><option>inactivo</option></select></label>
       </div>
       <div class="form-actions">
         <button class="ghost-button" type="button" @click="go('/admin/cines')">Cancelar</button>
@@ -102,7 +107,7 @@
 
     <div v-else-if="mode === 'rooms'" class="table-card card">
       <table>
-        <thead><tr><th>Sala</th><th>Cine</th><th>Tipo</th><th>Capacidad</th><th>Estado</th></tr></thead>
+        <thead><tr><th>Sala</th><th>Cine</th><th>Tipo</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody>
           <tr v-for="room in catalog.rooms" :key="room.id">
             <td><strong>{{ room.name }}</strong></td>
@@ -110,18 +115,20 @@
             <td>{{ room.type }}</td>
             <td>{{ room.rows * room.cols }} asientos</td>
             <td><span class="pill status">{{ room.status }}</span></td>
+            <td><button class="ghost-button" type="button" @click="loadRoom(room.id)">Editar</button></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <form v-else-if="mode === 'createRoom'" class="card form-card" @submit.prevent="saveRoom">
+    <form v-else-if="mode === 'createRoom' || mode === 'editRoom'" class="card form-card" @submit.prevent="saveRoom">
       <div class="form-grid">
         <label class="field">Nombre<input v-model="roomForm.name" class="input" required /></label>
         <label class="field">Cine<select v-model="roomForm.cinemaId" class="input" required><option v-for="cinema in catalog.cinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select></label>
         <label class="field">Tipo<select v-model="roomForm.type" class="input"><option>2D</option><option>3D</option><option>IMAX</option><option>VIP</option></select></label>
         <label class="field">Filas<input v-model.number="roomForm.rows" class="input" type="number" min="1" required /></label>
         <label class="field">Columnas<input v-model.number="roomForm.cols" class="input" type="number" min="1" required /></label>
+        <label class="field">Estado<select v-model="roomForm.status" class="input"><option>activo</option><option>mantenimiento</option><option>inactivo</option></select></label>
       </div>
       <div class="form-actions">
         <button class="ghost-button" type="button" @click="go('/admin/salas')">Cancelar</button>
@@ -225,7 +232,7 @@ import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useCatalogStore } from "../stores/catalog";
 import { useReservationsStore } from "../stores/reservations";
-import type { CatalogMovie, Cinema, Coupon, Room, Showtime } from "../types";
+import type { AdminStatus, CatalogMovie, Cinema, Coupon, Room, Showtime } from "../types";
 
 const route = useRoute();
 const router = useRouter();
@@ -241,8 +248,10 @@ const title = computed(() => ({
   editMovie: "Editar película",
   cinemas: "Cines",
   createCinema: "Crear cine",
+  editCinema: "Editar cine",
   rooms: "Salas",
   createRoom: "Crear sala",
+  editRoom: "Editar sala",
   cities: "Ciudades",
   showtimes: "Funciones",
   reports: "Reporte de reservas",
@@ -251,9 +260,10 @@ const title = computed(() => ({
 }[mode.value] ?? "Administración"));
 
 const movieForm = reactive<CatalogMovie>({ id: "", title: "", genre: "", language: "", rating: "", duration: "", releaseDate: "", director: "", status: "en-cartelera", reservations: 0, revenue: "$0", img: "photo-1489599849927-2ee91cede3ba" });
-const movieRoomIds = ref<string[]>([]);
-const cinemaForm = reactive({ name: "", city: "", address: "" });
-const roomForm = reactive({ name: "", cinemaId: "", type: "2D" as Room["type"], rows: 8, cols: 10 });
+const editingCinemaId = ref("");
+const editingRoomId = ref("");
+const cinemaForm = reactive({ name: "", city: "", address: "", status: "activo" as AdminStatus });
+const roomForm = reactive({ name: "", cinemaId: "", type: "2D" as Room["type"], rows: 8, cols: 10, status: "activo" as AdminStatus });
 const cityName = ref("");
 const editingShowtimeId = ref("");
 const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" | "status">>({ movieId: "", cinemaId: "", roomId: "", date: new Date().toISOString().slice(0, 10), time: "18:00", format: "2D" });
@@ -273,6 +283,7 @@ function go(path: string) {
 }
 
 function imageUrl(id: string) {
+  if (id.startsWith("data:") || id.startsWith("http")) return id;
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=80`;
 }
 
@@ -288,6 +299,14 @@ function roomFor(id: string) {
   return catalog.roomById(id);
 }
 
+function cinemasForMovie(movieId: string) {
+  const cinemaNames = catalog.showtimes
+    .filter((showtime) => showtime.movieId === movieId && showtime.status === "activo")
+    .map((showtime) => cinemaFor(showtime.cinemaId)?.name)
+    .filter(Boolean) as string[];
+  return [...new Set(cinemaNames)];
+}
+
 function money(value: number) {
   return new Intl.NumberFormat("es-HN", { style: "currency", currency: "USD" }).format(value);
 }
@@ -296,8 +315,17 @@ function loadMovie(id: string) {
   const movie = catalog.movieById(id);
   if (!movie) return;
   Object.assign(movieForm, movie);
-  movieRoomIds.value = catalog.rooms.filter((room) => room.status === "activo").slice(0, 2).map((room) => room.id);
   router.push("/admin/peliculas/editar");
+}
+
+function loadMovieImage(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    movieForm.img = String(reader.result);
+  };
+  reader.readAsDataURL(file);
 }
 
 function saveMovie() {
@@ -309,37 +337,69 @@ function saveMovie() {
 }
 
 function saveCinema() {
+  const previous = editingCinemaId.value ? catalog.cinemaById(editingCinemaId.value) : undefined;
   const cinema: Cinema = {
-    id: `CI${String(catalog.cinemas.length + 1).padStart(3, "0")}`,
+    id: editingCinemaId.value || `CI${String(catalog.cinemas.length + 1).padStart(3, "0")}`,
     name: cinemaForm.name,
     city: cinemaForm.city,
     address: cinemaForm.address,
-    status: "activo",
-    rooms: 0,
-    functions: 0,
-    revenue: "$0",
-    img: "photo-1517604931442-7e0c8ed2963c",
+    status: cinemaForm.status,
+    rooms: previous?.rooms ?? 0,
+    functions: previous?.functions ?? 0,
+    revenue: previous?.revenue ?? "$0",
+    img: previous?.img ?? "",
   };
-  catalog.cinemas.unshift(cinema);
+  catalog.upsertCinema(cinema);
+  editingCinemaId.value = "";
   router.push("/admin/cines");
 }
 
 function saveRoom() {
   const cinema = catalog.cinemaById(roomForm.cinemaId);
   if (!cinema) return;
-  catalog.rooms.unshift({
-    id: `S${String(catalog.rooms.length + 1).padStart(3, "0")}`,
+  const previous = editingRoomId.value ? catalog.roomById(editingRoomId.value) : undefined;
+  catalog.upsertRoom({
+    id: editingRoomId.value || `S${String(catalog.rooms.length + 1).padStart(3, "0")}`,
     name: roomForm.name,
     cinemaId: cinema.id,
     cinema: cinema.name,
     type: roomForm.type,
     rows: roomForm.rows,
     cols: roomForm.cols,
-    status: "activo",
-    functions: 0,
-    occupancy: 0,
+    status: roomForm.status,
+    functions: previous?.functions ?? 0,
+    occupancy: previous?.occupancy ?? 0,
   });
+  editingRoomId.value = "";
   router.push("/admin/salas");
+}
+
+function loadCinema(id: string) {
+  const cinema = catalog.cinemaById(id);
+  if (!cinema) return;
+  editingCinemaId.value = id;
+  Object.assign(cinemaForm, {
+    name: cinema.name,
+    city: cinema.city,
+    address: cinema.address,
+    status: cinema.status,
+  });
+  router.push("/admin/cines/editar");
+}
+
+function loadRoom(id: string) {
+  const room = catalog.roomById(id);
+  if (!room) return;
+  editingRoomId.value = id;
+  Object.assign(roomForm, {
+    name: room.name,
+    cinemaId: room.cinemaId,
+    type: room.type,
+    rows: room.rows,
+    cols: room.cols,
+    status: room.status,
+  });
+  router.push("/admin/salas/editar");
 }
 
 function saveCity() {
@@ -427,6 +487,7 @@ small { display: block; margin-top: 3px; font-size: .8125rem; }
 .catalog-card { overflow: hidden; padding: 0; transition: transform .15s, border-color .15s; }
 .catalog-card:hover { transform: translateY(-2px); border-color: rgba(200,169,110,0.22); }
 .catalog-card img { width: 100%; height: 160px; object-fit: cover; }
+.poster-preview { width: min(280px, 100%); aspect-ratio: 2 / 3; object-fit: cover; border-radius: 3px; border: 1px solid rgba(200,169,110,.14); }
 .card-body, .stack { display: grid; gap: 10px; }
 .card-body { padding: 1rem 1.125rem; }
 .table-card { overflow: auto; }

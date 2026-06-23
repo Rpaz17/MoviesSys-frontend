@@ -25,5 +25,26 @@ export const useCatalogStore = defineStore("catalog", () => {
     showtimes.value = showtimes.value.map((item) => item.id === id ? { ...item, status: "inactivo" } : item);
   }
 
-  return { movies, cinemas, rooms, showtimes, customers, cities, movieById, cinemaById, roomById, upsertShowtime, cancelShowtime };
+  function toggleMovieStatus(id: string) {
+    const order: CatalogMovie["status"][] = ["en-cartelera", "proximamente", "inactivo"];
+    movies.value = movies.value.map((movie) => {
+      if (movie.id !== id) return movie;
+      const index = order.indexOf(movie.status);
+      return { ...movie, status: order[(index + 1) % order.length] };
+    });
+  }
+
+  function upsertCinema(next: Cinema) {
+    const index = cinemas.value.findIndex((item) => item.id === next.id);
+    if (index >= 0) cinemas.value[index] = next;
+    else cinemas.value.unshift(next);
+  }
+
+  function upsertRoom(next: Room) {
+    const index = rooms.value.findIndex((item) => item.id === next.id);
+    if (index >= 0) rooms.value[index] = next;
+    else rooms.value.unshift(next);
+  }
+
+  return { movies, cinemas, rooms, showtimes, customers, cities, movieById, cinemaById, roomById, upsertShowtime, cancelShowtime, toggleMovieStatus, upsertCinema, upsertRoom };
 });
