@@ -68,11 +68,6 @@ function logout() {
           </button>
         </template>
         <template v-else-if="session.isReceptionist">
-          <button class="hv-card hv-green" @click="router.push('/recepcion/reservas')">
-            <Ticket class="hv-card-icon" />
-            <span class="hv-card-title">Caja</span>
-            <span class="hv-card-desc">Ver reservas y cobrar efectivo</span>
-          </button>
           <button class="hv-card hv-gold" @click="router.push('/reservas/funciones')">
             <CalendarClock class="hv-card-icon" />
             <span class="hv-card-title">Funciones</span>
