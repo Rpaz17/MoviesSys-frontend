@@ -578,6 +578,7 @@ function startReservation(showtime: Showtime) {
   selectedShowtime.value = showtime;
   selectedSeats.value = [];
   confirmation.value = "";
+  lockedUntil.value = Date.now() + 5 * 60 * 1000;
 }
 
 function clearFlow() {
