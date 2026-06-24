@@ -23,6 +23,8 @@ export const router = createRouter({
     { path: "/reservas/resultado", name: "payment-result", component: ReservationsView, meta: { auth: true, role: "cliente", mode: "result" } },
     { path: "/reservas/mis-reservas", name: "my-reservations", component: ReservationsView, meta: { auth: true, role: "cliente", mode: "mine" } },
     { path: "/recepcion/reservas", name: "reception-reservations", component: ReservationsView, meta: { auth: true, role: "recepcionista", mode: "reception" } },
+    { path: "/recepcion/vender", name: "reception-sell", component: ReservationsView, meta: { auth: true, mode: "sell" } },
+    { path: "/admin", name: "admin-dashboard", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "dashboard" } },
     { path: "/admin/clientes", name: "admin-customers", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "customers" } },
     { path: "/admin/peliculas", name: "admin-movies", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "movies" } },
     { path: "/admin/peliculas/crear", name: "admin-create-movie", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "createMovie" } },
@@ -35,6 +37,7 @@ export const router = createRouter({
     { path: "/admin/salas/editar", name: "admin-edit-room", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "editRoom" } },
     { path: "/admin/ciudades", name: "admin-cities", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "cities" } },
     { path: "/admin/funciones", name: "admin-showtimes", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "showtimes" } },
+    { path: "/admin/funciones/editar", name: "admin-edit-showtime", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "editShowtime" } },
     { path: "/admin/reportes", name: "admin-reports", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "reports" } },
     { path: "/admin/cupones", name: "admin-coupons", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "coupons" } },
     { path: "/admin/cancelaciones", name: "admin-cancellations", component: AdminCatalogView, meta: { auth: true, role: "administrador", mode: "cancellations" } },
@@ -44,7 +47,11 @@ export const router = createRouter({
 router.beforeEach((to) => {
   const session = useSessionStore();
   if (to.meta.auth && !session.user) return "/login";
-  if (to.meta.guest && session.user) return "/home";
+  if (to.meta.guest && session.user) {
+    if (session.isAdmin) return "/admin";
+    return "/home";
+  }
   if (to.meta.role && session.user?.role !== to.meta.role) return "/home";
+  if (to.path === "/home" && session.isAdmin) return "/admin";
   return true;
 });

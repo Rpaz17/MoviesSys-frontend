@@ -7,12 +7,68 @@
         <h1>{{ title }}</h1>
       </div>
       <div class="header-actions">
+        <button v-if="mode !== 'dashboard'" class="ghost-button" type="button" @click="go('/admin')">
+          <LayoutDashboard class="w-3.5 h-3.5" /> Dashboard
+        </button>
         <button v-if="mode === 'movies'" class="primary-button" type="button" @click="go('/admin/peliculas/crear')">Nueva película</button>
         <button v-if="mode === 'cinemas'" class="primary-button" type="button" @click="go('/admin/cines/crear')">Nuevo cine</button>
         <button v-if="mode === 'rooms'" class="primary-button" type="button" @click="go('/admin/salas/crear')">Nueva sala</button>
         <button v-if="mode === 'showtimes'" class="primary-button" type="button" @click="resetShowtime">Nueva función</button>
         <button v-if="mode === 'reports'" class="ghost-button" type="button" @click="exportCsv">Exportar CSV</button>
       </div>
+    </div>
+
+    <div v-if="mode === 'dashboard'" class="dashboard-grid">
+      <button class="dash-card" @click="go('/admin/clientes')">
+        <Users class="dash-icon" />
+        <span class="dash-label">Clientes</span>
+        <span class="dash-desc">Gestionar clientes registrados</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/peliculas')">
+        <Clapperboard class="dash-icon" />
+        <span class="dash-label">Películas</span>
+        <span class="dash-desc">Catálogo y estados</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/cines')">
+        <Building2 class="dash-icon" />
+        <span class="dash-label">Cines</span>
+        <span class="dash-desc">Sucursales y estados</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/salas')">
+        <LayoutGrid class="dash-icon" />
+        <span class="dash-label">Salas</span>
+        <span class="dash-desc">Salas, tipos y capacidad</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/ciudades')">
+        <MapPin class="dash-icon" />
+        <span class="dash-label">Ciudades</span>
+        <span class="dash-desc">Activar o desactivar ciudades</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/funciones')">
+        <CalendarClock class="dash-icon" />
+        <span class="dash-label">Funciones</span>
+        <span class="dash-desc">Crear y gestionar funciones</span>
+      </button>
+      <button class="dash-card" @click="go('/recepcion/vender')">
+        <Ticket class="dash-icon" />
+        <span class="dash-label">Vender boletos</span>
+        <span class="dash-desc">Cobrar en efectivo en taquilla</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/reportes')">
+        <BarChart3 class="dash-icon" />
+        <span class="dash-label">Reportes</span>
+        <span class="dash-desc">Reservas, pagos y CSV</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/cupones')">
+        <Percent class="dash-icon" />
+        <span class="dash-label">Cupones</span>
+        <span class="dash-desc">Crear y activar descuentos</span>
+      </button>
+      <button class="dash-card" @click="go('/admin/cancelaciones')">
+        <Ban class="dash-icon" />
+        <span class="dash-label">Cancelaciones</span>
+        <span class="dash-desc">Política de reembolsos</span>
+      </button>
     </div>
 
     <div v-if="mode === 'customers'" class="table-card card">
@@ -22,7 +78,11 @@
           <tr v-for="customer in catalog.customers" :key="customer.id">
             <td><strong>{{ customer.name }}</strong><small>{{ customer.phone }}</small></td>
             <td>{{ customer.email }}</td>
-            <td><span class="pill status">{{ customer.status }}</span></td>
+            <td>
+              <button class="pill status-toggle" :class="'status-' + customer.status" type="button" @click="toggleCustomerStatus(customer.id)">
+                {{ customer.status }}
+              </button>
+            </td>
             <td>{{ customer.reservations }}</td>
             <td>{{ customer.spent }}</td>
           </tr>
@@ -66,11 +126,17 @@
             <option value="inactivo">Inactivo</option>
           </select>
         </label>
-        <label class="field wide">Imagen de película
-          <input class="input" type="file" accept="image/*" @change="loadMovieImage" />
-        </label>
-        <label class="field wide">URL o ID de imagen
+        <label class="field wide">URL de imagen
           <input v-model="movieForm.img" class="input" placeholder="photo-1489599849927-2ee91cede3ba o https://..." />
+        </label>
+        <div class="field wide">
+          <span class="sample-label">Pósters de muestra</span>
+          <div class="sample-row">
+            <button v-for="sample in POSTER_SAMPLES" :key="sample.url" type="button" class="sample-chip" :class="{ active: movieForm.img === sample.url }" @click="movieForm.img = sample.url">{{ sample.label }}</button>
+          </div>
+        </div>
+        <label class="field wide">Subir archivo
+          <input class="input" type="file" accept="image/*" @change="loadMovieImage" />
         </label>
       </div>
       <img v-if="movieForm.img" class="poster-preview" :src="imageUrl(movieForm.img)" :alt="movieForm.title" />
@@ -124,10 +190,12 @@
     <form v-else-if="mode === 'createRoom' || mode === 'editRoom'" class="card form-card" @submit.prevent="saveRoom">
       <div class="form-grid">
         <label class="field">Nombre<input v-model="roomForm.name" class="input" required /></label>
-        <label class="field">Cine<select v-model="roomForm.cinemaId" class="input" required><option v-for="cinema in catalog.cinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select></label>
-        <label class="field">Tipo<select v-model="roomForm.type" class="input"><option>2D</option><option>3D</option><option>IMAX</option><option>VIP</option></select></label>
-        <label class="field">Filas<input v-model.number="roomForm.rows" class="input" type="number" min="1" required /></label>
-        <label class="field">Columnas<input v-model.number="roomForm.cols" class="input" type="number" min="1" required /></label>
+        <template v-if="mode !== 'editRoom'">
+          <label class="field">Cine<select v-model="roomForm.cinemaId" class="input" required><option v-for="cinema in catalog.cinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select></label>
+          <label class="field">Tipo<select v-model="roomForm.type" class="input"><option>2D</option><option>3D</option><option>IMAX</option><option>VIP</option></select></label>
+          <label class="field">Filas<input v-model.number="roomForm.rows" class="input" type="number" min="1" required /></label>
+          <label class="field">Columnas<input v-model.number="roomForm.cols" class="input" type="number" min="1" required /></label>
+        </template>
         <label class="field">Estado<select v-model="roomForm.status" class="input"><option>activo</option><option>mantenimiento</option><option>inactivo</option></select></label>
       </div>
       <div class="form-actions">
@@ -170,11 +238,27 @@
           </div>
           <div class="row-actions">
             <button class="ghost-button" type="button" @click="editShowtime(showtime)">Editar</button>
-            <button class="danger-button" type="button" @click="catalog.cancelShowtime(showtime.id)">Cancelar</button>
+            <button class="danger-button" type="button" @click="openCancelShowtime(showtime)">Cancelar</button>
           </div>
         </article>
       </div>
     </div>
+
+    <form v-else-if="mode === 'editShowtime'" class="card form-card" @submit.prevent="saveEditedShowtime">
+      <div class="form-grid">
+        <label class="field">Película<select v-model="showtimeForm.movieId" class="input" required><option v-for="movie in activeMovies" :key="movie.id" :value="movie.id">{{ movie.title }}</option></select></label>
+        <label class="field">Cine<select v-model="showtimeForm.cinemaId" class="input" required><option v-for="cinema in activeCinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select></label>
+        <label class="field">Sala<select v-model="showtimeForm.roomId" class="input" required><option v-for="room in filteredRooms" :key="room.id" :value="room.id">{{ room.name }} · {{ room.type }}</option></select></label>
+        <label class="field">Fecha<input v-model="showtimeForm.date" class="input" type="date" required /></label>
+        <label class="field">Hora<input v-model="showtimeForm.time" class="input" type="time" required /></label>
+        <label class="field">Formato<select v-model="showtimeForm.format" class="input"><option>2D</option><option>3D</option><option>IMAX</option><option>VIP</option></select></label>
+        <label class="field">Estado<select v-model="showtimeForm.editingStatus" class="input"><option value="activo">Activo</option><option value="mantenimiento">Mantenimiento</option><option value="inactivo">Inactivo</option></select></label>
+      </div>
+      <div class="form-actions">
+        <button class="ghost-button" type="button" @click="go('/admin/funciones')">Volver a funciones</button>
+        <button class="primary-button" type="submit">Guardar cambios</button>
+      </div>
+    </form>
 
     <div v-else-if="mode === 'reports'" class="table-card card">
       <table>
@@ -222,17 +306,32 @@
       <p class="policy-box">Esta configuración alimenta la política mostrada al cliente antes de cancelar una reserva.</p>
       <button class="primary-button" type="button">Guardar política</button>
     </form>
+    <div v-if="cancelShowtimeTarget" class="modal-backdrop" @click.self="cancelShowtimeTarget = null">
+      <article class="modal-card">
+        <h2>Cancelar función</h2>
+        <p><strong>{{ movieFor(cancelShowtimeTarget.movieId)?.title }}</strong></p>
+        <p>{{ cinemaFor(cancelShowtimeTarget.cinemaId)?.name }} · {{ roomFor(cancelShowtimeTarget.roomId)?.name }}</p>
+        <p>{{ cancelShowtimeTarget.date }} · {{ cancelShowtimeTarget.time }} · {{ cancelShowtimeTarget.format }}</p>
+        <p class="policy-box">Al cancelar esta función pasará a estado <strong>inactivo</strong>. Las reservas existentes no se eliminarán, pero la función ya no aparecerá disponible para nuevas reservas.</p>
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" @click="cancelShowtimeTarget = null">Volver</button>
+          <button class="danger-button" type="button" @click="confirmCancelShowtime">Confirmar cancelación</button>
+        </div>
+      </article>
+    </div>
     </div><!-- /page-inner -->
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
+import { Ban, BarChart3, Building2, CalendarClock, Clapperboard, LayoutDashboard, LayoutGrid, MapPin, Percent, Ticket, Users } from "lucide-vue-next";
 import { useCatalogStore } from "../stores/catalog";
 import { useReservationsStore } from "../stores/reservations";
-import type { AdminStatus, CatalogMovie, Cinema, Coupon, Room, Showtime } from "../types";
+import { POSTER_SAMPLES } from "../data/mockData";
+import type { AdminStatus, CatalogMovie, Cinema, Coupon, Customer, Room, Showtime } from "../types";
 
 const route = useRoute();
 const router = useRouter();
@@ -242,6 +341,7 @@ const { reservations, coupons } = storeToRefs(reservationsStore);
 
 const mode = computed(() => String(route.meta.mode ?? "movies"));
 const title = computed(() => ({
+  dashboard: "Dashboard",
   customers: "Clientes",
   movies: "Películas",
   createMovie: "Crear película",
@@ -254,6 +354,7 @@ const title = computed(() => ({
   editRoom: "Editar sala",
   cities: "Ciudades",
   showtimes: "Funciones",
+  editShowtime: "Editar función",
   reports: "Reporte de reservas",
   coupons: "Cupones",
   cancellations: "Configuración de cancelación",
@@ -266,8 +367,9 @@ const cinemaForm = reactive({ name: "", city: "", address: "", status: "activo" 
 const roomForm = reactive({ name: "", cinemaId: "", type: "2D" as Room["type"], rows: 8, cols: 10, status: "activo" as AdminStatus });
 const cityName = ref("");
 const editingShowtimeId = ref("");
-const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" | "status">>({ movieId: "", cinemaId: "", roomId: "", date: new Date().toISOString().slice(0, 10), time: "18:00", format: "2D" });
+const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" | "status"> & { editingStatus?: AdminStatus }>({ movieId: "", cinemaId: "", roomId: "", date: new Date().toISOString().slice(0, 10), time: "18:00", format: "2D" });
 const couponForm = reactive<Omit<Coupon, "id" | "active" | "uses">>({ code: "", type: "porcentaje", value: 10, expiresAt: "2026-12-31" });
+const cancelShowtimeTarget = ref<Showtime | null>(null);
 const policy = reactive({ fullHours: 24, partialHours: 6, partialPercent: 50 });
 
 const activeMovies = computed(() => catalog.movies.filter((item) => item.status !== "inactivo"));
@@ -285,6 +387,14 @@ function go(path: string) {
 function imageUrl(id: string) {
   if (id.startsWith("data:") || id.startsWith("http")) return id;
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=900&q=80`;
+}
+
+function toggleCustomerStatus(id: string) {
+  const order: Customer["status"][] = ["activo", "inactivo", "suspendido"];
+  const customer = catalog.customers.find((c) => c.id === id);
+  if (!customer) return;
+  const nextIdx = (order.indexOf(customer.status) + 1) % order.length;
+  customer.status = order[nextIdx];
 }
 
 function movieFor(id: string) {
@@ -418,15 +528,47 @@ function resetShowtime() {
 }
 
 function editShowtime(showtime: Showtime) {
+  router.push(`/admin/funciones/editar?id=${showtime.id}`);
+}
+
+function loadEditShowtime(id: string) {
+  const showtime = catalog.showtimes.find((item) => item.id === id);
+  if (!showtime) return;
   editingShowtimeId.value = showtime.id;
-  Object.assign(showtimeForm, {
-    movieId: showtime.movieId,
-    cinemaId: showtime.cinemaId,
-    roomId: showtime.roomId,
-    date: showtime.date,
-    time: showtime.time,
-    format: showtime.format,
+  showtimeForm.movieId = showtime.movieId;
+  showtimeForm.cinemaId = showtime.cinemaId;
+  showtimeForm.roomId = showtime.roomId;
+  showtimeForm.date = showtime.date;
+  showtimeForm.time = showtime.time;
+  showtimeForm.format = showtime.format;
+  showtimeForm.editingStatus = showtime.status;
+}
+
+function saveEditedShowtime() {
+  const previous = catalog.showtimes.find((item) => item.id === editingShowtimeId.value);
+  catalog.upsertShowtime({
+    movieId: showtimeForm.movieId,
+    cinemaId: showtimeForm.cinemaId,
+    roomId: showtimeForm.roomId,
+    date: showtimeForm.date,
+    time: showtimeForm.time,
+    format: showtimeForm.format,
+    id: editingShowtimeId.value,
+    status: showtimeForm.editingStatus ?? "activo",
+    reservations: previous?.reservations ?? 0,
+    revenue: previous?.revenue ?? "$0",
   });
+  router.push("/admin/funciones");
+}
+
+function openCancelShowtime(showtime: Showtime) {
+  cancelShowtimeTarget.value = showtime;
+}
+
+function confirmCancelShowtime() {
+  if (!cancelShowtimeTarget.value) return;
+  catalog.cancelShowtime(cancelShowtimeTarget.value.id);
+  cancelShowtimeTarget.value = null;
 }
 
 function saveShowtime() {
@@ -472,6 +614,12 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
+watch(() => route.query.id, (id) => {
+  if (mode.value === "editShowtime" && id) {
+    loadEditShowtime(String(id));
+  }
+}, { immediate: true });
+
 resetShowtime();
 </script>
 
@@ -512,6 +660,26 @@ tr:hover td { background: rgba(200,169,110,0.03); }
 .danger-button:hover { background: rgba(232,96,122,.15); }
 .policy-box { border-radius: 3px; padding: .875rem; background: rgba(255,255,255,0.04); color: #7a7590; font-size: .8125rem; line-height: 1.5; }
 .pill.status { background: rgba(200,169,110,.08); border: 1px solid rgba(200,169,110,.16); color: #c8a96e; }
+.status-toggle { cursor: pointer; transition: background .12s, border-color .12s; }
+.status-toggle:hover { opacity: .85; }
+.status-activo { background: rgba(76,175,125,0.08); border-color: rgba(76,175,125,0.2); color: #4caf7d; }
+.status-inactivo { background: rgba(122,117,144,0.08); border-color: rgba(122,117,144,0.2); color: #7a7590; }
+.status-suspendido { background: rgba(232,96,122,0.08); border-color: rgba(232,96,122,0.2); color: #e8607a; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.dash-card { display: flex; flex-direction: column; align-items: flex-start; gap: .375rem; padding: 1.25rem 1.25rem 1.125rem; border-radius: 4px; text-align: left; border: 1px solid rgba(200,169,110,0.12); background: rgba(200,169,110,0.04); transition: transform .12s, border-color .12s, background .12s; }
+.dash-card:hover { transform: translateY(-1px); background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.25); }
+.dash-card:active { transform: scale(.98); }
+.dash-icon { width: 1.25rem; height: 1.25rem; color: #c8a96e; margin-bottom: .25rem; }
+.dash-label { font-size: .9375rem; font-weight: 600; color: #f0ece4; line-height: 1.2; }
+.dash-desc { font-size: .75rem; color: #7a7590; line-height: 1.3; }
+.sample-label { font-size: .75rem; color: #7a7590; }
+.sample-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.sample-chip { font-size: .75rem; padding: .3125rem .625rem; border-radius: 3px; color: #9e9ab0; border: 1px solid rgba(200,169,110,0.14); background: rgba(255,255,255,0.02); transition: background .12s, border-color .12s, color .12s; }
+.sample-chip:hover { background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.28); color: #c8a96e; }
+.sample-chip.active { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.35); color: #c8a96e; }
+.modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,0.65); z-index: 30; backdrop-filter: blur(4px); }
+.modal-card { width: min(480px, calc(100vw - 2rem)); background: #171526; border: 1px solid rgba(200,169,110,0.14); border-radius: 4px; padding: 1.5rem; display: grid; gap: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 900px) {
   .section-header, .list-row, .form-actions { align-items: stretch; flex-direction: column; }
   .admin-split, .form-grid { grid-template-columns: 1fr; }

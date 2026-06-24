@@ -113,4 +113,12 @@ export const SHOWTIMES_DATA: Showtime[] = [
   { id: "F008", movieId: "M001", cinemaId: "CI001", roomId: "S001", date: "2026-06-18", time: "21:15", format: "2D",   status: "activo",        reservations: 74,  revenue: "$560" },
   { id: "F009", movieId: "M002", cinemaId: "CI002", roomId: "S003", date: "2026-06-19", time: "21:45", format: "IMAX", status: "activo",        reservations: 306, revenue: "$3.060" },
   { id: "F010", movieId: "M005", cinemaId: "CI005", roomId: "S005", date: "2026-06-19", time: "16:00", format: "2D",   status: "inactivo",      reservations: 0,   revenue: "$0" },
+  { id: "F011", movieId: "M001", cinemaId: "CI001", roomId: "S001", date: "2026-06-24", time: "14:00", format: "2D",   status: "activo",    reservations: 12,  revenue: "$84" },
+  { id: "F012", movieId: "M007", cinemaId: "CI001", roomId: "S002", date: "2026-06-24", time: "18:30", format: "VIP",  status: "activo",    reservations: 8,   revenue: "$96" },
+  { id: "F013", movieId: "M011", cinemaId: "CI002", roomId: "S003", date: "2026-06-24", time: "20:00", format: "IMAX", status: "activo",    reservations: 45,  revenue: "$450" },
+  { id: "F014", movieId: "M010", cinemaId: "CI002", roomId: "S004", date: "2026-06-24", time: "15:30", format: "3D",   status: "activo",    reservations: 10,  revenue: "$90" },
+  { id: "F015", movieId: "M003", cinemaId: "CI004", roomId: "S006", date: "2026-06-24", time: "16:00", format: "2D",   status: "activo",    reservations: 5,   revenue: "$35" },
+  { id: "F016", movieId: "M010", cinemaId: "CI004", roomId: "S006", date: "2026-06-24", time: "19:30", format: "2D",   status: "activo",    reservations: 18,  revenue: "$126" },
+  { id: "F017", movieId: "M007", cinemaId: "CI006", roomId: "S007", date: "2026-06-24", time: "21:00", format: "VIP",  status: "activo",    reservations: 3,   revenue: "$36" },
+  { id: "F018", movieId: "M005", cinemaId: "CI006", roomId: "S007", date: "2026-06-24", time: "13:00", format: "VIP",  status: "activo",    reservations: 0,   revenue: "$0" },
 ];

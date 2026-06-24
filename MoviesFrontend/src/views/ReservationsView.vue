@@ -8,7 +8,7 @@
       <button v-if="selectedShowtime" class="ghost-button" type="button" @click="clearFlow">Volver a funciones</button>
     </div>
 
-    <div v-if="(mode === 'functions' || mode === 'movies') && !selectedShowtime" class="filters-card card">
+    <div v-if="(mode === 'functions' || mode === 'movies') && !selectedShowtime && !selectedMovieId" class="filters-card card">
       <input v-model.trim="search" class="input" placeholder="Buscar pelicula" />
       <select v-model="genreFilter" class="input"><option value="">Todos los generos</option><option v-for="genre in genres" :key="genre" :value="genre">{{ genre }}</option></select>
       <select v-model="languageFilter" class="input"><option value="">Todos los idiomas</option><option v-for="language in languages" :key="language" :value="language">{{ language }}</option></select>
@@ -17,7 +17,7 @@
       <select v-model="cinemaFilter" class="input"><option value="">Todos los cines</option><option v-for="cinema in cinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select>
     </div>
 
-    <div v-if="mode === 'movies' && !selectedShowtime" class="grid-list">
+    <div v-if="mode === 'movies' && !selectedMovieId && !selectedShowtime" class="grid-list">
       <article v-for="movie in availableMovies" :key="movie.id" class="card function-card">
         <img :src="imageUrl(movie.img)" :alt="movie.title" />
         <div class="card-body">
@@ -25,9 +25,50 @@
           <h2>{{ movie.title }}</h2>
           <p>{{ movie.genre }} · {{ movie.language }} · {{ movie.duration }}</p>
           <p>Cines: {{ movieCinemas(movie.id).join(", ") || "Sin funciones activas" }}</p>
-          <button class="primary-button" type="button" :disabled="!firstShowtimeForMovie(movie.id)" @click="startReservation(firstShowtimeForMovie(movie.id)!)">Ver funciones</button>
+          <button class="primary-button" type="button" @click="selectedMovieId = movie.id">Ver funciones</button>
         </div>
       </article>
+    </div>
+
+    <div v-else-if="mode === 'movies' && selectedMovieId && !selectedShowtime" class="movie-split">
+      <aside class="card movie-info-card">
+        <img :src="imageUrl(selectedMovieData?.img)" :alt="selectedMovieData?.title" class="movie-poster" />
+        <div class="movie-info-body">
+          <span class="pill">{{ selectedMovieData?.status }}</span>
+          <h2>{{ selectedMovieData?.title }}</h2>
+          <p>{{ selectedMovieData?.genre }} · {{ selectedMovieData?.language }}</p>
+          <p>{{ selectedMovieData?.rating }} · {{ selectedMovieData?.duration }}</p>
+          <p class="muted">Dirigida por {{ selectedMovieData?.director }}</p>
+          <p class="muted">Estreno: {{ selectedMovieData?.releaseDate }}</p>
+        </div>
+        <button class="ghost-button full" type="button" @click="selectedMovieId = ''">Volver a peliculas</button>
+      </aside>
+
+      <div class="movie-functions-panel">
+        <div v-if="movieShowtimeGroups.length === 0" class="empty-state card">No hay funciones disponibles para esta pelicula.</div>
+        <section v-for="group in movieShowtimeGroups" :key="group.cinema.id" class="cinema-group">
+          <div class="group-heading">
+            <div>
+              <h2>{{ group.cinema.name }}</h2>
+              <p>{{ group.cinema.city }} · {{ group.cinema.address }}</p>
+            </div>
+            <span class="pill">{{ group.items.length }} funciones</span>
+          </div>
+          <div class="funciones-list">
+            <article v-for="showtime in group.items" :key="showtime.id" class="card funcion-row">
+              <div class="funcion-row-info">
+                <span class="pill">{{ showtime.format }}</span>
+                <span class="funcion-date">{{ formatDate(showtime.date) }} · {{ showtime.time }}</span>
+                <span class="funcion-room">{{ roomFor(showtime.roomId)?.name }}</span>
+              </div>
+              <div class="funcion-row-action">
+                <strong>{{ money(priceFor(showtime.format)) }}</strong>
+                <button class="primary-button" type="button" @click="startReservation(showtime)">Reservar</button>
+              </div>
+            </article>
+          </div>
+          </section>
+      </div>
     </div>
 
     <div v-else-if="mode === 'functions' && !selectedShowtime" class="cinema-groups">
@@ -126,6 +167,85 @@
       </div>
     </div>
 
+    <div v-else-if="mode === 'sell' && !sellShowtime" class="cinema-groups">
+      <section v-for="group in todayShowtimeGroups" :key="group.cinema.id" class="cinema-group">
+        <div class="group-heading">
+          <div>
+            <h2>{{ group.cinema.name }}</h2>
+            <p>{{ group.cinema.city }} · {{ group.cinema.address }}</p>
+          </div>
+          <span class="pill">{{ group.items.length }} funciones</span>
+        </div>
+        <div class="funciones-list">
+          <article v-for="showtime in group.items" :key="showtime.id" class="card funcion-row">
+            <div class="funcion-row-info">
+              <span class="pill">{{ showtime.format }}</span>
+              <span class="funcion-date">{{ formatDate(showtime.date) }} · {{ showtime.time }}</span>
+              <span>{{ movieFor(showtime.movieId)?.title }}</span>
+            </div>
+            <div class="funcion-row-action">
+              <strong>{{ money(priceFor(showtime.format)) }}</strong>
+              <button class="primary-button" type="button" @click="startSell(showtime)">Seleccionar</button>
+            </div>
+          </article>
+        </div>
+      </section>
+      <div v-if="todayShowtimeGroups.length === 0" class="empty-state card">No hay funciones activas para hoy.</div>
+    </div>
+
+    <div v-else-if="mode === 'sell' && sellShowtime" class="booking-grid">
+      <article class="card seat-card">
+        <div class="screen">Pantalla</div>
+        <div class="seat-scroll" aria-label="Mapa de asientos">
+          <div class="seat-map" :style="{ gridTemplateColumns: `repeat(${sellRoom?.cols ?? 10}, 48px)` }">
+            <button
+              v-for="seat in sellSeatList"
+              :key="seat"
+              type="button"
+              class="seat"
+              :class="{ reserved: sellReservedSeats.has(seat), selected: sellSeats.includes(seat) }"
+              :disabled="sellReservedSeats.has(seat)"
+              @click="toggleSellSeat(seat)"
+            >
+              {{ seat }}
+            </button>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="seat-dot available"></i>Disponible</span>
+          <span><i class="seat-dot selected-dot"></i>Seleccionado</span>
+          <span><i class="seat-dot reserved-dot"></i>Reservado</span>
+        </div>
+      </article>
+
+      <aside class="card checkout-card">
+        <h2>{{ sellMovie?.title }}</h2>
+        <p>{{ sellCinema?.name }} · {{ sellRoom?.name }}</p>
+        <p>{{ sellShowtime.date }} · {{ sellShowtime.time }}</p>
+        <div class="summary-line"><span>Asientos</span><strong class="selected-seat-list">{{ sellSeats.join(", ") || "Sin seleccionar" }}</strong></div>
+        <div class="summary-line total"><span>Total</span><strong>{{ money(sellTotal) }}</strong></div>
+
+        <label class="field">
+          Nombre del cliente
+          <input v-model="sellCustomerName" class="input" placeholder="Nombre completo" />
+        </label>
+
+        <div class="pos-cash-row">
+          <label class="field" style="flex:1">
+            Efectivo recibido
+            <input v-model.number="cashReceived" class="input" type="number" min="0" step="0.01" placeholder="0.00" />
+          </label>
+          <div class="pos-change" v-if="cashReceived >= sellTotal">
+            <span class="mono muted" style="font-size:.6875rem;text-transform:uppercase">Cambio</span>
+            <strong>{{ money(cashReceived - sellTotal) }}</strong>
+          </div>
+        </div>
+
+        <button class="primary-button full" type="button" :disabled="!canSell" @click="confirmSell">Cobrar y emitir boleto</button>
+        <button class="ghost-button full" type="button" @click="clearSell">Cancelar venta</button>
+      </aside>
+    </div>
+
     <div v-else-if="mode === 'reception'" class="stack">
       <div class="filters-card card">
         <input v-model.trim="receptionSearch" class="input" placeholder="Buscar por reserva, cliente o pelicula" />
@@ -139,6 +259,7 @@
         </div>
         <div class="row-actions">
           <strong>{{ money(reservation.total) }}</strong>
+          <button class="ghost-button" type="button" @click="selectedReservation = reservation">Ver detalle</button>
           <button v-if="reservation.paymentStatus !== 'pagado'" class="primary-button" type="button" @click="reservationsStore.payReservation(reservation.id, 'efectivo')">Pagar efectivo</button>
         </div>
       </article>
@@ -155,10 +276,39 @@
         </div>
         <div class="row-actions">
           <strong>{{ money(reservation.total) }}</strong>
+          <button class="ghost-button" type="button" @click="selectedReservation = reservation">Ver detalle</button>
           <button v-if="reservation.status !== 'cancelada'" class="danger-button" type="button" @click="openCancel(reservation)">Cancelar reserva</button>
         </div>
       </article>
       <div v-if="myReservations.length === 0" class="empty-state card">Aún no tienes reservas activas.</div>
+    </div>
+
+    <div v-if="selectedReservation" class="modal-backdrop" @click.self="selectedReservation = null">
+      <article class="modal-card detail-modal">
+        <span class="pill" :class="detailStatusClass">{{ detailStatusLabel }}</span>
+        <h2>{{ detailMovie?.title }}</h2>
+        <p class="detail-id mono muted">Reserva #{{ selectedReservation.id }}</p>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row"><span>Cliente</span><strong>{{ selectedReservation.customerName }}</strong></div>
+        <div class="receipt-row"><span>Correo</span><strong style="font-size:.8125rem">{{ selectedReservation.customerEmail }}</strong></div>
+        <div class="receipt-row"><span>Cine</span><strong>{{ detailCinema?.name }}</strong></div>
+        <div class="receipt-row"><span>Sala</span><strong>{{ detailRoom?.name }} · {{ detailRoom?.type }}</strong></div>
+        <div class="receipt-row"><span>Fecha</span><strong>{{ formatDate(selectedReservation.date) }} · {{ selectedReservation.time }}</strong></div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row"><span>Asientos</span><strong>{{ selectedReservation.seats.join(", ") }}</strong></div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row"><span>Subtotal</span><strong>{{ money(selectedReservation.total + (selectedReservation.discount ?? 0)) }}</strong></div>
+        <div class="receipt-row" v-if="selectedReservation.discount"><span>Descuento{{ selectedReservation.couponCode ? ` (${selectedReservation.couponCode})` : '' }}</span><strong>-{{ money(selectedReservation.discount) }}</strong></div>
+        <div class="receipt-row total"><span>Total</span><strong>{{ money(selectedReservation.total) }}</strong></div>
+        <div class="receipt-row"><span>Método</span><strong>{{ selectedReservation.paymentMethod === 'efectivo' ? 'Efectivo' : 'Tarjeta' }}</strong></div>
+        <div class="receipt-row" v-if="selectedReservation.transactionId"><span>Transacción</span><strong class="mono" style="font-size:.75rem">{{ selectedReservation.transactionId }}</strong></div>
+        <template v-if="selectedReservation.status === 'cancelada'">
+          <div class="receipt-divider"></div>
+          <div class="receipt-row"><span>Estado reembolso</span><strong>{{ selectedReservation.refundStatus ?? '-' }}</strong></div>
+          <div class="receipt-row" v-if="selectedReservation.refundAmount"><span>Monto reembolso</span><strong>{{ money(selectedReservation.refundAmount) }}</strong></div>
+        </template>
+        <button class="primary-button full" type="button" @click="selectedReservation = null">Cerrar</button>
+      </article>
     </div>
 
     <div v-if="cancelTarget" class="modal-backdrop" @click.self="cancelTarget = null">
@@ -170,6 +320,28 @@
           <button class="ghost-button" type="button" @click="cancelTarget = null">Volver</button>
           <button class="danger-button" type="button" @click="confirmCancel">Cancelar reserva</button>
         </div>
+      </article>
+    </div>
+
+    <div v-if="sellReceipt" class="modal-backdrop" @click.self="closeSellReceipt">
+      <article class="modal-card receipt-modal">
+        <span class="pill" style="background:rgba(76,175,125,0.12);border-color:rgba(76,175,125,0.3);color:#4caf7d">Pago exitoso</span>
+        <h2>Recibo de venta</h2>
+        <p class="receipt-id mono">#{{ sellReceipt.id }}</p>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row"><span>Película</span><strong>{{ sellMovie?.title }}</strong></div>
+        <div class="receipt-row"><span>Cine</span><strong>{{ sellCinema?.name }}</strong></div>
+        <div class="receipt-row"><span>Sala</span><strong>{{ sellRoom?.name }} · {{ sellShowtime?.format }}</strong></div>
+        <div class="receipt-row"><span>Fecha</span><strong>{{ formatDate(sellReceipt.date) }} · {{ sellReceipt.time }}</strong></div>
+        <div class="receipt-row"><span>Cliente</span><strong>{{ sellReceipt.customerName }}</strong></div>
+        <div class="receipt-row"><span>Asientos</span><strong>{{ sellReceipt.seats.join(", ") }}</strong></div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-row"><span>Subtotal</span><strong>{{ money(sellReceipt.total) }}</strong></div>
+        <div class="receipt-row cash"><span>Efectivo</span><strong>{{ money(cashReceived) }}</strong></div>
+        <div class="receipt-row change" v-if="cashReceived > sellReceipt.total"><span>Cambio</span><strong>{{ money(cashReceived - sellReceipt.total) }}</strong></div>
+        <div class="receipt-divider"></div>
+        <p class="receipt-footer mono muted">{{ new Date().toLocaleString("es-HN") }}</p>
+        <button class="primary-button full" type="button" @click="closeSellReceipt">Nueva venta</button>
       </article>
     </div>
   </section>
@@ -192,6 +364,7 @@ const session = useSessionStore();
 const { reservations, coupons } = storeToRefs(reservationsStore);
 
 const selectedShowtime = ref<Showtime | null>(null);
+const selectedMovieId = ref("");
 const selectedSeats = ref<string[]>([]);
 const couponCode = ref("");
 const appliedCouponId = ref("");
@@ -210,6 +383,13 @@ const cityFilter = ref("");
 const cinemaFilter = ref("");
 const receptionSearch = ref("");
 const lockedUntil = ref(0);
+const sellShowtime = ref<Showtime | null>(null);
+const sellSeats = ref<string[]>([]);
+const sellCustomerName = ref("");
+const cashReceived = ref(0);
+const sellConfirmation = ref("");
+const sellReceipt = ref<Reservation | null>(null);
+const selectedReservation = ref<Reservation | null>(null);
 const now = ref(Date.now());
 let timer: number | undefined;
 
@@ -220,6 +400,7 @@ const pageTitle = computed(() => {
   if (mode.value === "movies") return "Peliculas con cines disponibles";
   if (mode.value === "result") return "Resultado de pago";
   if (mode.value === "reception") return "Caja de recepcion";
+  if (mode.value === "sell") return sellShowtime.value ? "Vender boletos" : "Funciones de hoy";
   return selectedShowtime.value ? "Selecciona tus asientos" : "Funciones disponibles";
 });
 const availableShowtimes = computed(() => catalog.showtimes.filter((item) => {
@@ -248,6 +429,13 @@ const showtimeGroups = computed(() => catalog.cinemas
     items: availableShowtimes.value.filter((showtime) => showtime.cinemaId === cinema.id),
   }))
   .filter((group) => group.items.length > 0));
+const movieShowtimeGroups = computed(() => catalog.cinemas
+  .map((cinema) => ({
+    cinema,
+    items: availableShowtimes.value.filter((showtime) => showtime.movieId === selectedMovieId.value && showtime.cinemaId === cinema.id),
+  }))
+  .filter((group) => group.items.length > 0));
+const selectedMovieData = computed(() => selectedMovieId.value ? catalog.movieById(selectedMovieId.value) : undefined);
 const genres = computed(() => [...new Set(catalog.movies.map((movie) => movie.genre))]);
 const languages = computed(() => [...new Set(catalog.movies.map((movie) => movie.language))]);
 const cities = computed(() => [...new Set(catalog.cinemas.map((cinema) => cinema.city))]);
@@ -291,6 +479,38 @@ const lockCountdown = computed(() => {
   const minutes = Math.floor(remaining / 60000);
   const seconds = Math.floor((remaining % 60000) / 1000);
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+});
+
+const todayShowtimes = computed(() => catalog.showtimes.filter((item) => item.status === "activo" && item.date === new Date().toISOString().slice(0, 10)));
+const todayShowtimeGroups = computed(() => catalog.cinemas
+  .map((cinema) => ({ cinema, items: todayShowtimes.value.filter((showtime) => showtime.cinemaId === cinema.id) }))
+  .filter((group) => group.items.length > 0));
+const sellMovie = computed(() => sellShowtime.value ? catalog.movieById(sellShowtime.value.movieId) : undefined);
+const sellCinema = computed(() => sellShowtime.value ? catalog.cinemaById(sellShowtime.value.cinemaId) : undefined);
+const sellRoom = computed(() => sellShowtime.value ? catalog.roomById(sellShowtime.value.roomId) : undefined);
+const sellSeatList = computed(() => {
+  const room = sellRoom.value;
+  if (!room) return [];
+  return Array.from({ length: room.rows * room.cols }, (_, index) => `${String.fromCharCode(65 + Math.floor(index / room.cols))}${(index % room.cols) + 1}`);
+});
+const sellReservedSeats = computed(() => new Set(reservations.value
+  .filter((item) => item.showtimeId === sellShowtime.value?.id && item.status !== "cancelada")
+  .flatMap((item) => item.seats)));
+const sellTotal = computed(() => sellSeats.value.length * (sellShowtime.value ? priceFor(sellShowtime.value.format) : 0));
+const canSell = computed(() => sellSeats.value.length > 0 && sellCustomerName.value.trim().length > 0 && cashReceived.value >= sellTotal.value);
+
+const detailMovie = computed(() => selectedReservation.value ? catalog.movieById(selectedReservation.value.movieId) : undefined);
+const detailCinema = computed(() => selectedReservation.value ? catalog.cinemaById(selectedReservation.value.cinemaId) : undefined);
+const detailRoom = computed(() => selectedReservation.value ? catalog.roomById(selectedReservation.value.roomId) : undefined);
+const detailStatusClass = computed(() => {
+  if (!selectedReservation.value) return "";
+  if (selectedReservation.value.status === "cancelada") return "status-canceled";
+  return selectedReservation.value.paymentStatus === "pagado" ? "status-paid" : "status-pending";
+});
+const detailStatusLabel = computed(() => {
+  if (!selectedReservation.value) return "";
+  if (selectedReservation.value.status === "cancelada") return "Cancelada";
+  return selectedReservation.value.paymentStatus === "pagado" ? "Pagado" : "Pendiente";
 });
 
 watch(() => route.path, () => clearFlow());
@@ -339,15 +559,30 @@ function money(value: number) {
   return new Intl.NumberFormat("es-HN", { style: "currency", currency: "USD" }).format(value);
 }
 
+function formatDate(dateStr: string) {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 function startReservation(showtime: Showtime) {
+  if (!session.user) {
+    router.push({
+      path: "/login",
+      query: {
+        reason: "checkout",
+        redirect: `/reservas/funciones?showtime=${showtime.id}`,
+      },
+    });
+    return;
+  }
   selectedShowtime.value = showtime;
   selectedSeats.value = [];
   confirmation.value = "";
-  lockedUntil.value = Date.now() + 5 * 60 * 1000;
 }
 
 function clearFlow() {
   selectedShowtime.value = null;
+  selectedMovieId.value = "";
   selectedSeats.value = [];
   couponCode.value = "";
   appliedCouponId.value = "";
@@ -356,6 +591,9 @@ function clearFlow() {
 }
 
 function toggleSeat(seat: string) {
+  if (selectedSeats.value.length === 0) {
+    lockedUntil.value = Date.now() + 5 * 60 * 1000;
+  }
   selectedSeats.value = selectedSeats.value.includes(seat)
     ? selectedSeats.value.filter((item) => item !== seat)
     : [...selectedSeats.value, seat];
@@ -434,6 +672,61 @@ function confirmCancel() {
   reservationsStore.cancelReservation(cancelTarget.value.id, refundEstimate.value, "Política estándar de cancelación");
   cancelTarget.value = null;
 }
+
+function startSell(showtime: Showtime) {
+  sellShowtime.value = showtime;
+  sellSeats.value = [];
+  sellCustomerName.value = "";
+  cashReceived.value = 0;
+  sellConfirmation.value = "";
+}
+
+function toggleSellSeat(seat: string) {
+  sellSeats.value = sellSeats.value.includes(seat)
+    ? sellSeats.value.filter((item) => item !== seat)
+    : [...sellSeats.value, seat];
+}
+
+function clearSell() {
+  sellShowtime.value = null;
+  sellSeats.value = [];
+  sellCustomerName.value = "";
+  cashReceived.value = 0;
+  sellConfirmation.value = "";
+}
+
+function confirmSell() {
+  if (!sellShowtime.value || !canSell.value) return;
+  const reservation: Reservation = {
+    id: `R${Date.now().toString().slice(-6)}`,
+    customerName: sellCustomerName.value.trim(),
+    customerEmail: "venta-en-taquilla@cine.com",
+    movieId: sellShowtime.value.movieId,
+    showtimeId: sellShowtime.value.id,
+    cinemaId: sellShowtime.value.cinemaId,
+    roomId: sellShowtime.value.roomId,
+    date: sellShowtime.value.date,
+    time: sellShowtime.value.time,
+    seats: [...sellSeats.value],
+    status: "confirmada",
+    paymentStatus: "pagado",
+    paymentMethod: "efectivo",
+    transactionId: `TX-EF-${Date.now()}`,
+    total: sellTotal.value,
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+  reservationsStore.addReservation(reservation);
+  sellReceipt.value = reservation;
+}
+
+function closeSellReceipt() {
+  sellReceipt.value = null;
+  sellShowtime.value = null;
+  sellSeats.value = [];
+  sellCustomerName.value = "";
+  cashReceived.value = 0;
+  sellConfirmation.value = "";
+}
 </script>
 
 <style scoped>
@@ -442,6 +735,8 @@ function confirmCancel() {
 h1 { font-size: clamp(22px, 3vw, 34px); font-weight: 600; color: #f0ece4; margin: 0; font-family: 'Playfair Display', serif; letter-spacing: -0.01em; }
 h2 { color: #f0ece4; margin: 0; font-size: 1rem; font-weight: 600; }
 p { color: #7a7590; margin: 0; font-size: .875rem; }
+.filters-card { width: min(100%, 1100px); margin: 0 auto 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 1rem 1.125rem; align-items: end; }
+.filters-card .input { min-width: 0; }
 .grid-list { width: min(100%, 1100px); margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
 .cinema-groups { width: min(100%, 1100px); margin: 0 auto; display: grid; gap: 24px; }
 .cinema-group { display: grid; gap: 12px; }
@@ -478,6 +773,24 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .success-box { color: #4caf7d; background: rgba(76,175,125,0.06); }
 .form-note { font-size: .75rem; color: #c8a96e; margin: 0; }
 .full { width: 100%; }
+.pos-cash-row { display: flex; gap: 12px; align-items: end; }
+.pos-change { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; border: 1px solid rgba(76,175,125,0.25); border-radius: 3px; padding: .5rem .75rem; background: rgba(76,175,125,0.05); }
+.pos-change strong { font-size: 1.125rem; color: #4caf7d; }
+.receipt-modal { gap: 10px; }
+.receipt-id { font-size: 1.25rem; color: #c8a96e; letter-spacing: .04em; }
+.receipt-divider { height: 1px; background: rgba(200,169,110,0.1); margin: 4px 0; }
+.receipt-row { display: flex; justify-content: space-between; gap: 12px; font-size: .875rem; }
+.receipt-row span { color: #7a7590; }
+.receipt-row strong { color: #f0ece4; text-align: right; }
+.receipt-row.cash strong { color: #6495ed; }
+.receipt-row.change strong { color: #4caf7d; }
+.receipt-footer { font-size: .6875rem; text-align: center; letter-spacing: .04em; }
+.detail-modal { width: min(660px, calc(100vw - 2rem)); gap: 12px; }
+.detail-id { font-size: .8125rem; letter-spacing: .04em; margin: 0; }
+.receipt-row.total strong { font-size: 1.0625rem; }
+.status-paid { background: rgba(76,175,125,0.12) !important; border-color: rgba(76,175,125,0.3) !important; color: #4caf7d !important; }
+.status-pending { background: rgba(200,169,110,0.12) !important; border-color: rgba(200,169,110,0.3) !important; color: #c8a96e !important; }
+.status-canceled { background: rgba(232,96,122,0.12) !important; border-color: rgba(232,96,122,0.3) !important; color: #e8607a !important; }
 .stack { width: min(100%, 1100px); margin: 0 auto; display: grid; gap: 12px; }
 .reservation-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 1.25rem 1.5rem; }
 .row-actions { display: grid; gap: 8px; justify-items: end; }
@@ -487,7 +800,23 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .modal-card { width: min(480px, calc(100vw - 2rem)); background: #171526; border: 1px solid rgba(200,169,110,0.14); border-radius: 4px; padding: 1.5rem; display: grid; gap: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .empty-state { padding: 3rem 1.5rem; text-align: center; color: #7a7590; font-size: .875rem; }
+.movie-split { width: min(100%, 1100px); margin: 0 auto; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
+.movie-info-card { min-width: 0; padding: 0; overflow: hidden; position: sticky; top: 72px; }
+.movie-poster { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; }
+.movie-info-body { padding: 1rem 1.125rem; display: grid; gap: 8px; }
+.movie-functions-panel { display: grid; gap: 20px; min-width: 0; }
+.funciones-list { display: grid; gap: 8px; }
+.funcion-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: .875rem 1.125rem; }
+.funcion-row-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.funcion-date { color: #f0ece4; font-size: .875rem; font-weight: 500; }
+.funcion-room { color: #7a7590; font-size: .8125rem; }
+.funcion-row-action { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 @media (max-width: 900px) {
+  .movie-split { grid-template-columns: 1fr; }
+  .movie-info-card { position: static; }
+  .movie-poster { aspect-ratio: 16 / 9; max-height: 240px; }
+  .funcion-row { align-items: stretch; flex-direction: column; }
+  .funcion-row-action { justify-content: space-between; width: 100%; }
   .booking-grid { grid-template-columns: 1fr; }
   .checkout-card { position: static; }
   .payment-grid { grid-template-columns: 1fr; }
