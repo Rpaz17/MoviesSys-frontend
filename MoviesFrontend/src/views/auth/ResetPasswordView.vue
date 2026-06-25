@@ -1,55 +1,20 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff, Film, Loader2, Mail, XCircle } from "lucide-vue-next";
-import { useSessionStore } from "../stores/session";
-import { vConfirm, vEmail, vName, vPass, vPassLogin, strength } from "../lib/validation";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Film, XCircle } from "lucide-vue-next";
+import { vConfirm, vPass, strength } from "../../lib/validation";
 
 const route = useRoute();
 const router = useRouter();
-const session = useSessionStore();
-const mode = computed(() => String(route.meta.mode ?? "login"));
+
 const show = ref(false);
-const status = ref<"idle" | "loading" | "success" | "error" | "sent">("idle");
-const form = reactive({ name: "", email: "", password: "", confirm: "" });
+const status = ref<"idle" | "loading" | "success" | "error">("idle");
+const form = reactive({ password: "", confirm: "" });
 const error = ref("");
 const passStrength = computed(() => strength(form.password));
-const redirectTo = computed(() => String(route.query.redirect || "/home"));
-const loginReason = computed(() => route.query.reason === "checkout");
-
-function finishAuth() {
-  router.push(redirectTo.value);
-}
 
 function submit() {
   error.value = "";
-  if (mode.value === "login") {
-    if (vEmail(form.email) || vPassLogin(form.password)) {
-      error.value = "Revisa correo y contrasena.";
-      return;
-    }
-    status.value = "loading";
-    window.setTimeout(() => {
-      const ok = session.login(form.email, form.password);
-      status.value = ok ? "success" : "error";
-      if (ok) finishAuth();
-      else error.value = "Credenciales invalidas.";
-    }, 350);
-    return;
-  }
-  if (mode.value === "register") {
-    const validation = vName(form.name) || vEmail(form.email) || vPass(form.password) || vConfirm(form.password, form.confirm);
-    if (validation) { error.value = validation; return; }
-    session.register(form.name, form.email);
-    status.value = "success";
-    finishAuth();
-    return;
-  }
-  if (mode.value === "forgot") {
-    if (vEmail(form.email)) { error.value = "Ingresa un correo valido."; return; }
-    status.value = "sent";
-    return;
-  }
   const validation = vPass(form.password) || vConfirm(form.password, form.confirm);
   if (validation) { error.value = validation; return; }
   status.value = "success";
@@ -58,47 +23,24 @@ function submit() {
 
 <template>
   <div class="auth-shell">
-    <!-- Subtle bg gradient -->
     <div class="auth-bg-glow"></div>
 
     <div class="auth-card">
-      <!-- Logo -->
       <div class="auth-logo">
         <div class="auth-logo-icon">
           <Film class="w-6 h-6 text-white" />
         </div>
-        <h1 class="auth-title">
-          {{ mode === 'login' ? 'Iniciar sesion' : mode === 'register' ? 'Crear cuenta' : mode === 'forgot' ? 'Recuperar cuenta' : 'Nueva contrasena' }}
-        </h1>
+        <h1 class="auth-title">Nueva contrasena</h1>
         <p class="auth-subtitle">MovieSys</p>
       </div>
 
-      <div v-if="loginReason" class="auth-alert auth-alert-info">
-        <AlertCircle class="w-4 h-4 flex-shrink-0" />
-        <span>Para reservar y pagar necesitas iniciar sesion o crear una cuenta.</span>
-      </div>
-
-      <!-- Alerts -->
-      <div v-if="status === 'success' && mode !== 'login'" class="auth-alert auth-alert-success">
+      <div v-if="status === 'success'" class="auth-alert auth-alert-success">
         <CheckCircle2 class="w-4 h-4 flex-shrink-0" />
-        <span>{{ mode === 'register' ? 'Cuenta creada correctamente.' : 'Contrasena actualizada.' }}</span>
-      </div>
-      <div v-if="status === 'sent'" class="auth-alert auth-alert-success">
-        <Mail class="w-4 h-4 flex-shrink-0" />
-        <span>Enviamos instrucciones a tu correo.</span>
+        <span>Contrasena actualizada.</span>
       </div>
 
-      <!-- Form -->
       <form class="auth-form" @submit.prevent="submit">
-        <label v-if="mode === 'register'" class="auth-field">
-          <span class="auth-label">Nombre</span>
-          <input v-model="form.name" class="input" placeholder="Valeria Montoya" />
-        </label>
-        <label v-if="mode !== 'reset'" class="auth-field">
-          <span class="auth-label">Correo</span>
-          <input v-model="form.email" class="input" placeholder="correo@moviesys.com" />
-        </label>
-        <label v-if="mode !== 'forgot'" class="auth-field">
+        <label class="auth-field">
           <span class="auth-label">Contrasena</span>
           <div class="auth-pass-wrap">
             <input v-model="form.password" class="input" :type="show ? 'text' : 'password'" placeholder="••••••••" style="padding-right:2.75rem" />
@@ -106,9 +48,9 @@ function submit() {
               <EyeOff v-if="show" class="w-4 h-4" /><Eye v-else class="w-4 h-4" />
             </button>
           </div>
-          <p v-if="form.password && mode !== 'login'" class="auth-strength" :style="{ color: passStrength.color }">{{ passStrength.label }}</p>
+          <p v-if="form.password" class="auth-strength" :style="{ color: passStrength.color }">{{ passStrength.label }}</p>
         </label>
-        <label v-if="mode === 'register' || mode === 'reset'" class="auth-field">
+        <label class="auth-field">
           <span class="auth-label">Confirmar</span>
           <input v-model="form.confirm" class="input" type="password" placeholder="••••••••" />
         </label>
@@ -119,18 +61,13 @@ function submit() {
         </div>
 
         <button class="primary-button auth-submit" :disabled="status === 'loading'">
-          <Loader2 v-if="status === 'loading'" class="w-4 h-4 animate-spin" />
-          <AlertCircle v-else-if="mode === 'forgot'" class="w-4 h-4" />
-          <ArrowRight v-else class="w-4 h-4" />
-          {{ mode === 'login' ? 'Entrar' : mode === 'register' ? 'Registrarme' : mode === 'forgot' ? 'Enviar enlace' : 'Actualizar' }}
+          <ArrowRight class="w-4 h-4" />
+          Actualizar
         </button>
       </form>
 
-      <!-- Footer links -->
       <div class="auth-footer">
-        <button v-if="mode !== 'login'" class="auth-link" @click="router.push({ path: '/login', query: route.query })">Iniciar sesion</button>
-        <button v-if="mode === 'login'" class="auth-link" @click="router.push({ path: '/register', query: route.query })">Crear cuenta</button>
-        <button v-if="mode === 'login'" class="auth-link auth-link-muted" @click="router.push('/forgot')">Olvide mi contrasena</button>
+        <button class="auth-link" @click="router.push({ path: '/login', query: route.query })">Iniciar sesion</button>
       </div>
     </div>
   </div>
@@ -186,7 +123,6 @@ function submit() {
 }
 .auth-alert-success { background: rgba(76,175,125,0.07); border: 1px solid rgba(76,175,125,0.2); color: #4caf7d; }
 .auth-alert-error { background: rgba(200,16,46,0.08); border: 1px solid rgba(200,16,46,0.22); color: #e8607a; }
-.auth-alert-info { background: rgba(200,169,110,0.07); border: 1px solid rgba(200,169,110,0.22); color: #c8a96e; }
 
 /* Form */
 .auth-form { display: flex; flex-direction: column; gap: 1rem; }
@@ -213,6 +149,4 @@ function submit() {
 .auth-footer { display: flex; justify-content: center; gap: 1.25rem; padding-top: .25rem; }
 .auth-link { font-size: .8125rem; color: #c8a96e; transition: opacity .12s; }
 .auth-link:hover { opacity: .8; }
-.auth-link-muted { color: #7a7590; }
-.auth-link-muted:hover { color: #a09aae; opacity: 1; }
 </style>

@@ -1,0 +1,62 @@
+import { z } from "zod";
+import { apiClient } from "../lib/api-client";
+
+// ── Zod schemas ────────────────────────────────────────────────────────────────
+
+export const loginInputSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+export type LoginInput = z.infer<typeof loginInputSchema>;
+
+export const signupInputSchema = z.object({
+  nombre: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  telefono: z.string().optional(),
+});
+export type SignupInput = z.infer<typeof signupInputSchema>;
+
+export const forgotPasswordInputSchema = z.object({
+  email: z.string().email(),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordInputSchema>;
+
+export const resetPasswordInputSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(6),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
+
+export const loginResponseSchema = z.object({
+  access_token: z.string(),
+});
+export type LoginResponse = z.infer<typeof loginResponseSchema>;
+
+export const signupResponseSchema = z.object({
+  message: z.string(),
+  access_token: z.string(),
+});
+export type SignupResponse = z.infer<typeof signupResponseSchema>;
+
+// ── Service ────────────────────────────────────────────────────────────────────
+
+export const authService = {
+  async login(payload: LoginInput): Promise<LoginResponse> {
+    const { data } = await apiClient.post("/auth/login", payload);
+    return loginResponseSchema.parse(data);
+  },
+
+  async signup(payload: SignupInput): Promise<SignupResponse> {
+    const { data } = await apiClient.post("/auth/signup", payload);
+    return signupResponseSchema.parse(data);
+  },
+
+  async forgotPassword(payload: ForgotPasswordInput): Promise<void> {
+    await apiClient.post("/auth/forgot-password", payload);
+  },
+
+  async resetPassword(payload: ResetPasswordInput): Promise<void> {
+    await apiClient.post("/auth/reset-password", payload);
+  },
+};
