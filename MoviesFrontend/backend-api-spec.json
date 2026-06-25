@@ -1,0 +1,3997 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Mensaje de bienvenida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": "Hello World!"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verificar estado de la API",
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/auth/signup": {
+      "post": {
+        "operationId": "AuthController_signup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Usuario registrado exitosamente",
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Registrar un nuevo usuario",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login exitoso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Iniciar sesión con email y contraseña",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitud procesada correctamente (si el usuario existe, se envía correo)"
+          }
+        },
+        "summary": "Solicitar recuperación de contraseña",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña restablecida exitosamente"
+          },
+          "400": {
+            "description": "Token inválido o expirado"
+          }
+        },
+        "summary": "Restablecer contraseña con token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del usuario",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "nombre": "Juan Perez",
+                    "email": "juan.nuevo@example.com",
+                    "telefono": "+50211223344",
+                    "id_rol": "2",
+                    "estado": "active"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflicto: El email ya está en uso"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar información de un usuario",
+        "tags": [
+          "Usuarios"
+        ]
+      }
+    },
+    "/users/{id}/notificaciones": {
+      "patch": {
+        "operationId": "UsersController_toggleNotificaciones",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del usuario",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleNotificacionesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferencia de notificaciones actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "notificaciones_activas": true
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Toggle de preferencia de notificaciones del usuario",
+        "tags": [
+          "Usuarios"
+        ]
+      }
+    },
+    "/users": {
+      "get": {
+        "operationId": "UsersController_getUsers",
+        "parameters": [
+          {
+            "name": "nombre",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "email",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resultados",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de usuarios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "nombre": "Juan Perez",
+                      "email": "juan.nuevo@example.com",
+                      "telefono": "+50211223344",
+                      "id_rol": "2",
+                      "estado": "active"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener todos los usuarios",
+        "tags": [
+          "Usuarios"
+        ]
+      }
+    },
+    "/users/{id}/password": {
+      "put": {
+        "operationId": "UsersController_updatePassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del usuario",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Contraseña actualizada correctamente"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "La contraseña actual es incorrecta"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar la contraseña de un usuario",
+        "tags": [
+          "Usuarios"
+        ]
+      }
+    },
+    "/users/admin/users/{id}/status": {
+      "patch": {
+        "operationId": "UsersController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del usuario a modificar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado y registrado en bitácora"
+          },
+          "403": {
+            "description": "Prohibido: Solo administradores pueden realizar esta acción"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cambiar estado de un usuario (Admin)",
+        "tags": [
+          "Usuarios"
+        ]
+      }
+    },
+    "/peliculas": {
+      "post": {
+        "description": "Create a new movie.",
+        "operationId": "PeliculasController_createPelicula",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePeliculaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The movie has been created Succesfully",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "titulo": "Project Hail Marry",
+                  "sinopsis": "sinopsis de la pelicula",
+                  "poster_url": "http://image.link/12345",
+                  "idioma_id": 1,
+                  "genero_id": 1,
+                  "fecha_estreno": "2026-03-09",
+                  "activo": "true",
+                  "created_at": "2026-03-09 15:00:00+00",
+                  "updated_at": "",
+                  "updated_by": ""
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Peliculas"
+        ]
+      },
+      "get": {
+        "description": "Obtener peliculas activas con busqueda opcional por titulo",
+        "operationId": "PeliculasController_buscar",
+        "parameters": [
+          {
+            "name": "titulo",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de peliculas",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "titulo": "Avatar",
+                    "sinopsis": "Sinopsis",
+                    "poster_url": "http://image.link/12345",
+                    "fecha_estreno": "2026-03-09",
+                    "idiomas": {
+                      "nombre": "Ingles"
+                    },
+                    "generos": {
+                      "nombre": "Accion"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Peliculas"
+        ]
+      }
+    },
+    "/peliculas/{id}/poster": {
+      "post": {
+        "description": "Subir el poster de una pelicula por su ID",
+        "operationId": "PeliculasController_uploadPoster",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadPosterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Poster subido exitosamente"
+          },
+          "404": {
+            "description": "Pelicula no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Peliculas"
+        ]
+      }
+    },
+    "/peliculas/{id}": {
+      "put": {
+        "description": "Editar una pelicula por ID",
+        "operationId": "PeliculasController_editar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la pelicula a editar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePeliculaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pelicula actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "titulo": "Avatar actualizado",
+                  "sinopsis": "Sinopsis actualizada",
+                  "poster_url": "http://image.link/12345",
+                  "fecha_estreno": "2026-03-09",
+                  "activo": true,
+                  "updated_at": "2026-06-07T00:00:00.000Z",
+                  "id_usuario": "1",
+                  "idiomas": {
+                    "nombre": "Ingles"
+                  },
+                  "generos": {
+                    "nombre": "Accion"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Pelicula no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Peliculas"
+        ]
+      }
+    },
+    "/peliculas/{id}/cines/{cineId}/funciones": {
+      "get": {
+        "operationId": "PeliculasController_getFunciones",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la película",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cineId",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de funciones con disponibilidad",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "fecha_hora": "2026-06-07T18:00:00Z",
+                      "estado": "active",
+                      "salas": {
+                        "id": "1",
+                        "nombre": "Sala 1",
+                        "cines": {
+                          "id": "1",
+                          "nombre": "Cinépolis"
+                        }
+                      },
+                      "_count": {
+                        "asientosFuncions": 40
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener funciones de una película en un cine específico con disponibilidad de asientos",
+        "tags": [
+          "Peliculas"
+        ]
+      }
+    },
+    "/ciudades": {
+      "post": {
+        "operationId": "CiudadesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCiudadeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ciudad creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "nombre": "San Pedro Sula"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva ciudad",
+        "tags": [
+          "Ciudades"
+        ]
+      },
+      "get": {
+        "operationId": "CiudadesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de ciudades",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "nombre": "San Pedro Sula"
+                    },
+                    {
+                      "id": "2",
+                      "nombre": "Tegucigalpa"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener todas las ciudades",
+        "tags": [
+          "Ciudades"
+        ]
+      }
+    },
+    "/ciudades/{id}": {
+      "patch": {
+        "operationId": "CiudadesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCiudadeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ciudad actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "nombre": "San Pedro Sula Updated"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar una ciudad por ID",
+        "tags": [
+          "Ciudades"
+        ]
+      }
+    },
+    "/funciones": {
+      "post": {
+        "operationId": "FuncionesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFuncioneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Función creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "id_pelicula": "1",
+                    "id_sala": "1",
+                    "fecha_hora": "2026-06-07T18:00:00Z",
+                    "estado": "active"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Crea una nueva función",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/funciones/{id}/cancelar": {
+      "patch": {
+        "operationId": "FuncionesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Función cancelada exitosamente"
+          }
+        },
+        "summary": "Cancela una función",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/funciones/{id}": {
+      "put": {
+        "operationId": "FuncionesController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFuncioneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Función actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "id_pelicula": "1",
+                    "id_sala": "1",
+                    "fecha_hora": "2026-06-07T18:00:00Z",
+                    "estado": "active"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Editar una funcion",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/funciones/{id}/asientos": {
+      "get": {
+        "operationId": "FuncionesController_getAsientos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la función",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mapa de asientos agrupado por fila"
+          },
+          "404": {
+            "description": "Función no encontrada"
+          }
+        },
+        "summary": "Estado actual de todos los asientos de una función",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/funciones/{id}/asientos/bloquear": {
+      "post": {
+        "description": "Bloquea asientos para una función específica",
+        "operationId": "FuncionesController_bloquearAsientos",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BloquearAsientoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asiento bloqueado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "id_asiento": "A1",
+                  "id_funcion": "1",
+                  "estado": "blocked"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud inválida"
+          },
+          "401": {
+            "description": "No autorizado"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/funciones/{peliculaId}/cines/{cineId}/funciones": {
+      "get": {
+        "description": "Retorna todas las funciones activas de una película en un cine específico con información de disponibilidad de asientos",
+        "operationId": "FuncionesController_getFuncionesPorCine",
+        "parameters": [
+          {
+            "name": "peliculaId",
+            "required": true,
+            "in": "path",
+            "description": "ID de la película",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cineId",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de funciones disponibles con disponibilidad de asientos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "fecha_hora": "2026-06-15T18:00:00Z",
+                      "sala": {
+                        "id": "1",
+                        "nombre": "Sala 1",
+                        "filas": 10,
+                        "columnas": 15
+                      },
+                      "disponibilidad": {
+                        "total": 150,
+                        "disponibles": 120,
+                        "ocupados": 30,
+                        "porcentaje_disponibilidad": 80
+                      }
+                    },
+                    {
+                      "id": "2",
+                      "fecha_hora": "2026-06-15T20:00:00Z",
+                      "sala": {
+                        "id": "2",
+                        "nombre": "Sala 2",
+                        "filas": 12,
+                        "columnas": 18
+                      },
+                      "disponibilidad": {
+                        "total": 216,
+                        "disponibles": 50,
+                        "ocupados": 166,
+                        "porcentaje_disponibilidad": 23
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Película o cine no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "Obtener funciones disponibles de una película por cine",
+        "tags": [
+          "Funciones"
+        ]
+      }
+    },
+    "/roles": {
+      "post": {
+        "operationId": "RolesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Rol creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "3",
+                    "nombre": "moderator"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un nuevo rol (Solo Admin)",
+        "tags": [
+          "Roles"
+        ]
+      },
+      "get": {
+        "operationId": "RolesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "nombre": "admin"
+                    },
+                    {
+                      "id": "2",
+                      "nombre": "client"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener todos los roles",
+        "tags": [
+          "Roles"
+        ]
+      }
+    },
+    "/roles/{id}": {
+      "get": {
+        "operationId": "RolesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del rol",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle del rol",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "nombre": "admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener un rol por ID",
+        "tags": [
+          "Roles"
+        ]
+      },
+      "patch": {
+        "operationId": "RolesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del rol a actualizar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rol actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "nombre": "superadmin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar un rol por ID (Solo Admin)",
+        "tags": [
+          "Roles"
+        ]
+      },
+      "delete": {
+        "operationId": "RolesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del rol a eliminar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rol eliminado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Rol con ID 1 eliminado correctamente"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar un rol por ID (Solo Admin)",
+        "tags": [
+          "Roles"
+        ]
+      }
+    },
+    "/cupones/validar": {
+      "post": {
+        "operationId": "CuponesController_validate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateCuponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cupón válido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "tipo": "descuento",
+                    "valor": "20.50"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cupón no válido (inactivo, expirado, o sin usos disponibles)"
+          },
+          "404": {
+            "description": "Cupón no encontrado"
+          }
+        },
+        "summary": "Validar un cupón",
+        "tags": [
+          "Cupones"
+        ]
+      }
+    },
+    "/cupones": {
+      "post": {
+        "operationId": "CuponesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCuponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cupón creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "codigo": "DESC20",
+                    "tipo": "descuento",
+                    "valor": "20.50",
+                    "fecha_expiracion": "2025-12-31",
+                    "usos_maximos": 100,
+                    "usos_actuales": 0,
+                    "activo": true,
+                    "created_at": "2024-01-15T10:30:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El código del cupón ya existe"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear un nuevo cupón",
+        "tags": [
+          "Cupones"
+        ]
+      },
+      "get": {
+        "operationId": "CuponesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de cupones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "codigo": "DESC20",
+                      "tipo": "descuento",
+                      "valor": "20.50",
+                      "fecha_expiracion": "2025-12-31",
+                      "usos_maximos": 100,
+                      "usos_actuales": 0,
+                      "activo": true,
+                      "created_at": "2024-01-15T10:30:00Z"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener todos los cupones",
+        "tags": [
+          "Cupones"
+        ]
+      }
+    },
+    "/cupones/{id}": {
+      "get": {
+        "operationId": "CuponesController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cupón encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "codigo": "DESC20",
+                    "tipo": "descuento",
+                    "valor": "20.50",
+                    "fecha_expiracion": "2025-12-31",
+                    "usos_maximos": 100,
+                    "usos_actuales": 0,
+                    "activo": true,
+                    "created_at": "2024-01-15T10:30:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cupón no encontrado"
+          }
+        },
+        "summary": "Obtener un cupón por ID",
+        "tags": [
+          "Cupones"
+        ]
+      },
+      "put": {
+        "operationId": "CuponesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCuponDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cupón actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "codigo": "DESC20",
+                    "tipo": "descuento",
+                    "valor": "25.00",
+                    "fecha_expiracion": "2025-12-31",
+                    "usos_maximos": 150,
+                    "usos_actuales": 0,
+                    "activo": true,
+                    "created_at": "2024-01-15T10:30:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El código del cupón ya existe"
+          },
+          "404": {
+            "description": "Cupón no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar un cupón por ID",
+        "tags": [
+          "Cupones"
+        ]
+      },
+      "delete": {
+        "operationId": "CuponesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cupón eliminado exitosamente"
+          },
+          "404": {
+            "description": "Cupón no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar un cupón por ID",
+        "tags": [
+          "Cupones"
+        ]
+      }
+    },
+    "/cupones/{id}/status": {
+      "patch": {
+        "operationId": "CuponesController_toggleStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado del cupón actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "codigo": "DESC20",
+                    "tipo": "descuento",
+                    "valor": "20.50",
+                    "fecha_expiracion": "2025-12-31",
+                    "usos_maximos": 100,
+                    "usos_actuales": 0,
+                    "activo": false,
+                    "created_at": "2024-01-15T10:30:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cupón no encontrado"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Toggle activo/inactivo de un cupón",
+        "tags": [
+          "Cupones"
+        ]
+      }
+    },
+    "/politica-cancelacion": {
+      "get": {
+        "operationId": "PoliticaCancelacionController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de políticas de cancelación",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": "1",
+                      "horas_antes_minimo": 24,
+                      "horas_antes_maximo": 48,
+                      "porcentaje_reembolso": "100.00"
+                    },
+                    {
+                      "id": "2",
+                      "horas_antes_minimo": 12,
+                      "horas_antes_maximo": 24,
+                      "porcentaje_reembolso": "50.00"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener todas las reglas de política de cancelación",
+        "tags": [
+          "Política de Cancelación"
+        ]
+      },
+      "post": {
+        "operationId": "PoliticaCancelacionController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePoliticaCancelacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Política de cancelación creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "horas_antes_minimo": 24,
+                    "horas_antes_maximo": 48,
+                    "porcentaje_reembolso": "100.00"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva regla de política de cancelación",
+        "tags": [
+          "Política de Cancelación"
+        ]
+      }
+    },
+    "/politica-cancelacion/{id}": {
+      "get": {
+        "operationId": "PoliticaCancelacionController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Política de cancelación encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "horas_antes_minimo": 24,
+                    "horas_antes_maximo": 48,
+                    "porcentaje_reembolso": "100.00"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Política de cancelación no encontrada"
+          }
+        },
+        "summary": "Obtener una regla de política de cancelación por ID",
+        "tags": [
+          "Política de Cancelación"
+        ]
+      },
+      "put": {
+        "operationId": "PoliticaCancelacionController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePoliticaCancelacionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Política de cancelación actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "horas_antes_minimo": 24,
+                    "horas_antes_maximo": 48,
+                    "porcentaje_reembolso": "100.00"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Política de cancelación no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar una regla de política de cancelación",
+        "tags": [
+          "Política de Cancelación"
+        ]
+      },
+      "delete": {
+        "operationId": "PoliticaCancelacionController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Política de cancelación eliminada exitosamente"
+          },
+          "404": {
+            "description": "Política de cancelación no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar una regla de política de cancelación",
+        "tags": [
+          "Política de Cancelación"
+        ]
+      }
+    },
+    "/cines/{id}/salas": {
+      "post": {
+        "description": "Crear una sala en un cine con generacion automatica de asientos",
+        "operationId": "SalasController_crear",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSalaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sala creada exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Sala 1",
+                  "filas": 3,
+                  "columnas": 4,
+                  "id_cine": "1",
+                  "asientos_generados": 12
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Debe ingresar todos los datos solicitados"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Cine no encontrado"
+          },
+          "409": {
+            "description": "Ya existe una sala con ese nombre en este cine"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Salas"
+        ]
+      }
+    },
+    "/cines/salas/{id}": {
+      "get": {
+        "description": "Obtener detalles de una sala por su ID",
+        "operationId": "SalasController_getSala",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la sala",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles de la sala",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Sala 1",
+                  "filas": 3,
+                  "columnas": 4,
+                  "id_cine": "1",
+                  "asientos": [
+                    {
+                      "id": "1",
+                      "fila": 1,
+                      "columna": 1,
+                      "id_sala": "1"
+                    },
+                    {
+                      "id": "2",
+                      "fila": 1,
+                      "columna": 2,
+                      "id_sala": "1"
+                    },
+                    {
+                      "id": "3",
+                      "fila": 1,
+                      "columna": 3,
+                      "id_sala": "1"
+                    },
+                    {
+                      "id": "4",
+                      "fila": 1,
+                      "columna": 4,
+                      "id_sala": "1"
+                    },
+                    {
+                      "id": "5",
+                      "fila": 2,
+                      "columna": 1,
+                      "id_sala": "1"
+                    },
+                    {
+                      "id": "6",
+                      "fila": 2,
+                      "columna": 2,
+                      "id_sala": "1"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sala no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Salas"
+        ]
+      },
+      "put": {
+        "description": "Actualizar una sala por su ID",
+        "operationId": "SalasController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la sala a actualizar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSalaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sala actualizada exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Sala VIP",
+                  "filas": 5,
+                  "columnas": 10,
+                  "id_cine": "1",
+                  "advertencia": "Esta sala tiene 2 funcion(es) activa(s)"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Sala no encontrada"
+          },
+          "409": {
+            "description": "Ya existe una sala con ese nombre en este cine"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Salas"
+        ]
+      },
+      "delete": {
+        "description": "Eliminar una sala por su ID",
+        "operationId": "SalasController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la sala a eliminar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sala eliminada exitosamente"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Sala no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Salas"
+        ]
+      }
+    },
+    "/cines/salas": {
+      "get": {
+        "description": "Obtener todas las salas de un cine",
+        "operationId": "SalasController_getSalas",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de salas",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Sala 1",
+                    "filas": 3,
+                    "columnas": 4,
+                    "id_cine": "1"
+                  },
+                  {
+                    "id": "2",
+                    "nombre": "Sala 2",
+                    "filas": 5,
+                    "columnas": 6,
+                    "id_cine": "1"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Salas"
+        ]
+      }
+    },
+    "/cines": {
+      "post": {
+        "description": "Crear un nuevo cine",
+        "operationId": "CinesController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cine creado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Cinemark",
+                  "direccion": "Mall Galerias",
+                  "id_ciudad": "1",
+                  "created_at": "2026-06-07T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Ciudad no encontrada"
+          },
+          "409": {
+            "description": "Ya existe un cine con ese nombre en esta ciudad"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Cines"
+        ]
+      },
+      "get": {
+        "description": "Obtener todos los cines",
+        "operationId": "CinesController_getCines",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de cines",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Cinemark",
+                    "direccion": "Mall Galerias",
+                    "id_ciudad": "1",
+                    "created_at": "2026-06-07T00:00:00.000Z"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cines"
+        ]
+      }
+    },
+    "/cines/{id}": {
+      "get": {
+        "description": "Obtener detalles de un cine por su ID",
+        "operationId": "CinesController_getCine",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalles del cine",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Cinemark",
+                  "direccion": "Mall Galerias",
+                  "id_ciudad": "1",
+                  "created_at": "2026-06-07T00:00:00.000Z",
+                  "salas": [
+                    {
+                      "id": "1",
+                      "nombre": "Sala 1",
+                      "filas": 3,
+                      "columnas": 4
+                    },
+                    {
+                      "id": "2",
+                      "nombre": "Sala 2",
+                      "filas": 5,
+                      "columnas": 6
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cine no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Cines"
+        ]
+      },
+      "put": {
+        "description": "Actualizar un cine por su ID",
+        "operationId": "CinesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del cine a actualizar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCineDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cine actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Cine actualizado",
+                  "direccion": "Direccion actualizada",
+                  "id_ciudad": "1",
+                  "created_at": "2026-06-07T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Cine no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un cine con ese nombre en esta ciudad"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Cines"
+        ]
+      }
+    },
+    "/pagos": {
+      "post": {
+        "description": "Procesar un pago y actualizar estado de reserva a pagada",
+        "operationId": "PagosController_procesarPago",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePagoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pago procesado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "monto_original": "300.00",
+                  "monto_descuento": "0.00",
+                  "monto_final": "300.00",
+                  "metodo": "tarjeta",
+                  "estado": "completado",
+                  "referencia_externa": null,
+                  "created_at": "2026-06-09T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Reserva ya pagada o cancelada, o cupon invalido"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Reserva o cupon no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Pagos"
+        ]
+      }
+    },
+    "/pagos/efectivo": {
+      "post": {
+        "description": "Confirmar pago en efectivo de una reserva - Solo recepcionista",
+        "operationId": "PagosController_pagoEfectivo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePagoEfectivoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Pago en efectivo confirmado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "monto_original": "300.00",
+                  "monto_descuento": "0.00",
+                  "monto_final": "300.00",
+                  "metodo": "efectivo",
+                  "estado": "completado",
+                  "created_at": "2026-06-10T00:00:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Reserva ya pagada o cancelada"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "403": {
+            "description": "Acceso denegado: Se requieren privilegios de recepcionista"
+          },
+          "404": {
+            "description": "Reserva no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Pagos"
+        ]
+      }
+    },
+    "/reservas": {
+      "post": {
+        "operationId": "ReservasController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReservaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reserva creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "1",
+                    "numero_reserva": "RES-ABC1234567",
+                    "id_usuario": "1",
+                    "id_funcion": "1",
+                    "estado": "pendiente",
+                    "created_at": "2026-06-08T12:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Asientos no disponibles"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva reserva de asientos",
+        "tags": [
+          "Reservas"
+        ]
+      },
+      "get": {
+        "operationId": "ReservasController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de reservas obtenida"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar todas las reservas",
+        "tags": [
+          "Reservas"
+        ]
+      }
+    },
+    "/reservas/{id}": {
+      "get": {
+        "operationId": "ReservasController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la reserva",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle de la reserva"
+          },
+          "404": {
+            "description": "Reserva no encontrada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener detalle de una reserva por ID",
+        "tags": [
+          "Reservas"
+        ]
+      },
+      "patch": {
+        "operationId": "ReservasController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la reserva",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReservaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reserva actualizada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar el estado de una reserva",
+        "tags": [
+          "Reservas"
+        ]
+      },
+      "delete": {
+        "operationId": "ReservasController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la reserva",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserva eliminada y asientos liberados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar una reserva y liberar asientos",
+        "tags": [
+          "Reservas"
+        ]
+      }
+    },
+    "/reservas/{id}/cancelar": {
+      "post": {
+        "operationId": "ReservasController_cancelar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID de la reserva",
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reserva cancelada y asientos liberados"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancelar una reserva y liberar asientos",
+        "tags": [
+          "Reservas"
+        ]
+      }
+    },
+    "/reembolsos": {
+      "post": {
+        "description": "Calcular reembolso para un pago específico",
+        "operationId": "ReembolsosController_calcularReembolso",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReembolsoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reembolso calculado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": 1,
+                  "monto": 150,
+                  "estado": "procesado",
+                  "fecha_procesado": "2024-06-01T12:00:00.000Z",
+                  "createdAt": "2024-06-01T11:00:00.000Z",
+                  "horas_anticipacion": 48,
+                  "porcentaje_aplicado": 100,
+                  "monto_original": 150
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pago ya reembolsado, funcion ya ocurrio, o no hay politica aplicable"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Pago no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Reembolsos"
+        ]
+      }
+    },
+    "/reembolsos/efectivo": {
+      "post": {
+        "description": "Registrar reembolso en efectivo y notificar al recepcionista",
+        "operationId": "ReembolsosController_reembolsoEfectivo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReembolsoEfectivoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reembolso en efectivo registrado y notificacion enviada",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "monto": "150.00",
+                  "estado": "pendiente_efectivo",
+                  "fecha_procesado": "2026-06-10T00:00:00.000Z",
+                  "created_at": "2026-06-10T00:00:00.000Z",
+                  "horas_antes": 36,
+                  "porcentaje_reembolso": "100.00",
+                  "monto_original": "150.00",
+                  "notificacion_enviada": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pago no es efectivo, ya reembolsado, o funcion ya ocurrio"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "403": {
+            "description": "Acceso denegado: Se requieren privilegios de recepcionista"
+          },
+          "404": {
+            "description": "Pago no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Reembolsos"
+        ]
+      }
+    },
+    "/generos": {
+      "post": {
+        "description": "Crear un nuevo genero",
+        "operationId": "GeneroController_crear",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGeneroDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Genero creado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Accion",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "409": {
+            "description": "Ya existe un genero con ese nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Generos"
+        ]
+      },
+      "get": {
+        "description": "Obtener todos los generos",
+        "operationId": "GeneroController_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de generos",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Accion",
+                    "activo": true
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Generos"
+        ]
+      }
+    },
+    "/generos/{id}": {
+      "get": {
+        "description": "Obtener un genero por su ID",
+        "operationId": "GeneroController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del genero",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle del genero",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Accion",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Genero no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Generos"
+        ]
+      },
+      "put": {
+        "description": "Actualizar un genero por su ID",
+        "operationId": "GeneroController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del genero a actualizar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGeneroDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Genero actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Drama",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Genero no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un genero con ese nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Generos"
+        ]
+      },
+      "delete": {
+        "description": "Desactivar un genero por su ID (soft delete)",
+        "operationId": "GeneroController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del genero a desactivar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Genero desactivado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Genero con id 1 desactivado exitosamente"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Genero no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Generos"
+        ]
+      }
+    },
+    "/idiomas": {
+      "post": {
+        "description": "Crear un nuevo idioma",
+        "operationId": "IdiomasController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIdiomaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Idioma creado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Español",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "409": {
+            "description": "Ya existe un idioma con ese nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Idiomas"
+        ]
+      },
+      "get": {
+        "description": "Obtener todos los idiomas",
+        "operationId": "IdiomasController_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de idiomas",
+            "content": {
+              "application/json": {
+                "example": [
+                  {
+                    "id": "1",
+                    "nombre": "Español",
+                    "activo": true
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Idiomas"
+        ]
+      }
+    },
+    "/idiomas/{id}": {
+      "get": {
+        "description": "Obtener un idioma por su ID",
+        "operationId": "IdiomasController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del idioma",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalle del idioma",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Español",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Idioma no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "summary": "",
+        "tags": [
+          "Idiomas"
+        ]
+      },
+      "put": {
+        "description": "Actualizar un idioma por su ID",
+        "operationId": "IdiomasController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del idioma a actualizar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIdiomaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Idioma actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "1",
+                  "nombre": "Ingles",
+                  "activo": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Idioma no encontrado"
+          },
+          "409": {
+            "description": "Ya existe un idioma con ese nombre"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Idiomas"
+        ]
+      },
+      "delete": {
+        "description": "Desactivar un idioma por su ID (soft delete)",
+        "operationId": "IdiomasController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "ID del idioma a desactivar",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Idioma desactivado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Idioma con id 1 desactivado exitosamente"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "404": {
+            "description": "Idioma no encontrado"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Idiomas"
+        ]
+      }
+    },
+    "/admin/reportes/reservas": {
+      "get": {
+        "description": "Reporte de reservas con filtros y paginacion - Solo admin",
+        "operationId": "ReportesController_reporteReservas",
+        "parameters": [
+          {
+            "name": "id_pelicula",
+            "required": false,
+            "in": "query",
+            "description": "ID de la pelicula",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "id_cine",
+            "required": false,
+            "in": "query",
+            "description": "ID del cine",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "fecha_inicio",
+            "required": false,
+            "in": "query",
+            "description": "Fecha inicio (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fecha_fin",
+            "required": false,
+            "in": "query",
+            "description": "Fecha fin (YYYY-MM-DD)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "estado",
+            "required": false,
+            "in": "query",
+            "description": "Estado de la reserva",
+            "schema": {
+              "example": "pagada",
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagina",
+            "required": false,
+            "in": "query",
+            "description": "Pagina",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limite",
+            "required": false,
+            "in": "query",
+            "description": "Resultados por pagina",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reporte generado exitosamente",
+            "content": {
+              "application/json": {
+                "example": {
+                  "total": 50,
+                  "pagina": 1,
+                  "limite": 10,
+                  "total_paginas": 5,
+                  "data": [
+                    {
+                      "id": "1",
+                      "numero_reserva": "RES-ABC123",
+                      "estado": "pagada",
+                      "created_at": "2026-06-01T00:00:00.000Z",
+                      "updated_at": "2026-06-01T00:00:00.000Z",
+                      "total_asientos": 2,
+                      "usuario": {
+                        "id": "1",
+                        "nombre": "Juan Perez",
+                        "email": "juan@test.com"
+                      },
+                      "funcion": {
+                        "id": "1",
+                        "fecha_hora": "2026-12-01T20:00:00.000Z",
+                        "estado": "active",
+                        "pelicula": {
+                          "id": "1",
+                          "titulo": "Avatar"
+                        },
+                        "sala": {
+                          "id": "1",
+                          "nombre": "Sala 1",
+                          "cine": {
+                            "id": "1",
+                            "nombre": "Cinemark"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "403": {
+            "description": "Acceso denegado: Solo administradores"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "",
+        "tags": [
+          "Reportes"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Movies API",
+    "description": "",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "SignupDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "example": "Juan Perez",
+            "description": "Nombre completo"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "juan@example.com",
+            "description": "Correo electrónico"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "password123",
+            "description": "Contraseña (mínimo 6 caracteres)"
+          },
+          "telefono": {
+            "type": "string",
+            "example": "+50212345678",
+            "description": "Teléfono"
+          }
+        },
+        "required": [
+          "nombre",
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com",
+            "description": "Correo electrónico del usuario para recuperación"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "abc123token...",
+            "description": "Token de recuperación recibido por correo"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "example": "NewSecurePassword123!",
+            "description": "Nueva contraseña (mínimo 6 caracteres)"
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "example": "Juan Perez",
+            "description": "Nombre completo"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "juan.nuevo@example.com",
+            "description": "Nuevo correo electrónico"
+          },
+          "telefono": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "+50211223344",
+            "description": "Teléfono"
+          }
+        }
+      },
+      "ToggleNotificacionesDto": {
+        "type": "object",
+        "properties": {
+          "notificaciones_activas": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notificaciones_activas"
+        ]
+      },
+      "UpdatePasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "example": "OldPassword123!",
+            "description": "Contraseña actual del usuario"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "example": "NewSecurePassword456!",
+            "description": "Nueva contraseña (mínimo 6 caracteres)"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "UpdateStatusDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "example": "inactive",
+            "description": "Nuevo estado del usuario",
+            "enum": [
+              "active",
+              "inactive",
+              "suspended"
+            ]
+          }
+        },
+        "required": [
+          "estado"
+        ]
+      },
+      "CreatePeliculaDto": {
+        "type": "object",
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "sinopsis": {
+            "type": "string"
+          },
+          "poster_url": {
+            "type": "string"
+          },
+          "idioma": {
+            "type": "string"
+          },
+          "genero": {
+            "type": "string"
+          },
+          "fecha_estreno": {
+            "type": "string"
+          },
+          "uploaded_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "sinopsis",
+          "poster_url",
+          "uploaded_by"
+        ]
+      },
+      "UploadPosterDto": {
+        "type": "object",
+        "properties": {
+          "posterUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "posterUrl"
+        ]
+      },
+      "UpdatePeliculaDto": {
+        "type": "object",
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "description": "Título de la película"
+          },
+          "sinopsis": {
+            "type": "string",
+            "description": "Sinopsis de la película"
+          },
+          "poster_url": {
+            "type": "string",
+            "description": "URL del poster"
+          },
+          "fecha_estreno": {
+            "type": "string",
+            "description": "Fecha de estreno"
+          },
+          "id_idioma": {
+            "type": "number",
+            "description": "ID del idioma"
+          },
+          "id_genero": {
+            "type": "number",
+            "description": "ID del género"
+          },
+          "activo": {
+            "type": "boolean",
+            "description": "Si la película está activa"
+          }
+        }
+      },
+      "CreateCiudadeDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      },
+      "CreateFuncioneDto": {
+        "type": "object",
+        "properties": {
+          "id_pelicula": {
+            "type": "string"
+          },
+          "id_sala": {
+            "type": "string"
+          },
+          "fecha_hora": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id_pelicula",
+          "id_sala",
+          "fecha_hora"
+        ]
+      },
+      "UpdateFuncioneDto": {
+        "type": "object",
+        "properties": {
+          "id_pelicula": {
+            "type": "string"
+          },
+          "id_sala": {
+            "type": "string"
+          },
+          "fecha_hora": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      },
+      "BloquearAsientoDto": {
+        "type": "object",
+        "properties": {
+          "id_asiento": {
+            "type": "string",
+            "description": "Asiento a bloquear"
+          }
+        },
+        "required": [
+          "id_asiento"
+        ]
+      },
+      "CreateRoleDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 30,
+            "example": "admin",
+            "description": "Nombre del rol"
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      },
+      "UpdateRoleDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 30,
+            "example": "admin",
+            "description": "Nombre del rol"
+          }
+        }
+      },
+      "ValidateCuponDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "example": "DESC20",
+            "description": "Código del cupón a validar"
+          }
+        },
+        "required": [
+          "codigo"
+        ]
+      },
+      "CreateCuponDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "example": "DESC20",
+            "description": "Código único del cupón"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "descuento",
+            "description": "Tipo de cupón"
+          },
+          "valor": {
+            "type": "number",
+            "example": "20.50",
+            "description": "Valor del descuento"
+          },
+          "fecha_expiracion": {
+            "type": "string",
+            "example": "2025-12-31",
+            "description": "Fecha de expiración"
+          },
+          "usos_maximos": {
+            "type": "number",
+            "example": 100,
+            "description": "Usos máximos permitidos"
+          },
+          "activo": {
+            "type": "boolean",
+            "example": true,
+            "description": "Si el cupón está activo",
+            "default": true
+          }
+        },
+        "required": [
+          "codigo",
+          "tipo",
+          "valor",
+          "fecha_expiracion"
+        ]
+      },
+      "UpdateCuponDto": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "example": "DESC20",
+            "description": "Código único del cupón"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 20,
+            "example": "descuento",
+            "description": "Tipo de cupón"
+          },
+          "valor": {
+            "type": "number",
+            "example": "20.50",
+            "description": "Valor del descuento"
+          },
+          "fecha_expiracion": {
+            "type": "string",
+            "example": "2025-12-31",
+            "description": "Fecha de expiración"
+          },
+          "usos_maximos": {
+            "type": "number",
+            "example": 100,
+            "description": "Usos máximos permitidos"
+          },
+          "activo": {
+            "type": "boolean",
+            "example": true,
+            "description": "Si el cupón está activo"
+          }
+        }
+      },
+      "CreatePoliticaCancelacionDto": {
+        "type": "object",
+        "properties": {
+          "horas_antes_minimo": {
+            "type": "number"
+          },
+          "horas_antes_maximo": {
+            "type": "number"
+          },
+          "porcentaje_reembolso": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "horas_antes_minimo",
+          "porcentaje_reembolso"
+        ]
+      },
+      "UpdatePoliticaCancelacionDto": {
+        "type": "object",
+        "properties": {
+          "horas_antes_minimo": {
+            "type": "number"
+          },
+          "horas_antes_maximo": {
+            "type": "number"
+          },
+          "porcentaje_reembolso": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateSalaDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\\s-]+$",
+            "description": "Nombre de la sala",
+            "example": "Sala 1"
+          },
+          "filas": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 26,
+            "description": "Número de filas",
+            "example": 5
+          },
+          "columnas": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "Número de columnas",
+            "example": 10
+          }
+        },
+        "required": [
+          "nombre",
+          "filas",
+          "columnas"
+        ]
+      },
+      "UpdateSalaDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\\s-]+$",
+            "description": "Nombre de la sala",
+            "example": "Sala VIP"
+          }
+        }
+      },
+      "CreateCineDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del cine"
+          },
+          "direccion": {
+            "type": "string",
+            "description": "Direccion del cine"
+          },
+          "id_ciudad": {
+            "type": "number",
+            "description": "ID de la ciudad"
+          }
+        },
+        "required": [
+          "nombre",
+          "id_ciudad"
+        ]
+      },
+      "UpdateCineDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del cine"
+          },
+          "direccion": {
+            "type": "string",
+            "description": "Dirección del cine"
+          },
+          "id_ciudad": {
+            "type": "number",
+            "description": "ID de la ciudad"
+          }
+        }
+      },
+      "CreatePagoDto": {
+        "type": "object",
+        "properties": {
+          "id_reserva": {
+            "type": "number",
+            "description": "ID de la reserva"
+          },
+          "metodo": {
+            "type": "string",
+            "description": "Metodo de pago",
+            "example": "tarjeta"
+          },
+          "precio_por_asiento": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Precio por asiento en lempiras",
+            "example": 150
+          },
+          "codigo_cupon": {
+            "type": "string",
+            "description": "Codigo de cupon de descuento"
+          },
+          "referencia_externa": {
+            "type": "string",
+            "description": "Referencia externa del pago"
+          }
+        },
+        "required": [
+          "id_reserva",
+          "metodo",
+          "precio_por_asiento"
+        ]
+      },
+      "CreatePagoEfectivoDto": {
+        "type": "object",
+        "properties": {
+          "id_reserva": {
+            "type": "number",
+            "description": "ID de la reserva"
+          },
+          "precio_por_asiento": {
+            "type": "number",
+            "description": "Precio por asiento en lempiras",
+            "example": 150
+          },
+          "referencia_externa": {
+            "type": "string",
+            "description": "Referencia o numero de recibo"
+          }
+        },
+        "required": [
+          "id_reserva",
+          "precio_por_asiento"
+        ]
+      },
+      "CreateReservaDto": {
+        "type": "object",
+        "properties": {
+          "id_usuario": {
+            "type": "number",
+            "example": 1,
+            "description": "ID del usuario que realiza la reserva"
+          },
+          "id_funcion": {
+            "type": "number",
+            "example": 1,
+            "description": "ID de la función"
+          },
+          "asientosIds": {
+            "example": [
+              1,
+              2
+            ],
+            "description": "Lista de IDs de asientos de la función (AsientosFuncion)",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "id_usuario",
+          "id_funcion",
+          "asientosIds"
+        ]
+      },
+      "UpdateReservaDto": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "example": "completed",
+            "description": "Estado de la reserva"
+          }
+        }
+      },
+      "CreateReembolsoDto": {
+        "type": "object",
+        "properties": {
+          "id_pago": {
+            "type": "number",
+            "description": "ID del pago a reembolsar"
+          }
+        },
+        "required": [
+          "id_pago"
+        ]
+      },
+      "CreateReembolsoEfectivoDto": {
+        "type": "object",
+        "properties": {
+          "id_pago": {
+            "type": "number",
+            "description": "ID del pago a reembolsar"
+          },
+          "email_recepcionista": {
+            "type": "string",
+            "description": "Email del recepcionista a notificar"
+          },
+          "notas": {
+            "type": "string",
+            "description": "Notas adicionales del reembolso"
+          }
+        },
+        "required": [
+          "id_pago"
+        ]
+      },
+      "CreateGeneroDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "description": "Nombre del genero",
+            "example": "Acción"
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      },
+      "CreateIdiomaDto": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60,
+            "description": "Nombre del idioma",
+            "example": "Español"
+          }
+        },
+        "required": [
+          "nombre"
+        ]
+      }
+    }
+  }
+}
