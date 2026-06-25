@@ -1,10 +1,27 @@
+<script setup lang="ts">
+import { computed } from "vue";
+import { useRouter } from "vue-router";
+import { Ban, BarChart3, Building2, CalendarClock, Clapperboard, LayoutGrid, MapPin, Percent, Ticket, Users } from "lucide-vue-next";
+import { useSessionStore } from "../../stores/session";
+
+const router = useRouter();
+const session = useSessionStore();
+
+const greeting = computed(() => {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 18) return "Buenas tardes";
+  return "Buenas noches";
+});
+</script>
+
 <template>
   <section class="page">
     <div class="page-inner">
       <div class="section-header">
         <div>
           <p class="eyebrow">Panel de administrador</p>
-          <h1>Dashboard</h1>
+          <h1>{{ greeting }}, {{ session.user?.name.split(' ')[0] }}</h1>
         </div>
       </div>
 
@@ -63,13 +80,6 @@
     </div>
   </section>
 </template>
-
-<script setup lang="ts">
-import { useRouter } from "vue-router";
-import { Ban, BarChart3, Building2, CalendarClock, Clapperboard, LayoutGrid, MapPin, Percent, Ticket, Users } from "lucide-vue-next";
-
-const router = useRouter();
-</script>
 
 <style scoped>
 .section-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-end; margin-bottom: 20px; }

@@ -23,10 +23,10 @@
       <article v-for="movie in availableMovies" :key="movie.id" class="card function-card">
         <img :src="imageUrl(movie.img)" :alt="movie.title" />
         <div class="card-body">
-          <span class="pill">{{ movie.status }}</span>
+          <span class="pill">{{ movie.activo ? 'En cartelera' : 'Inactivo' }}</span>
           <h2>{{ movie.title }}</h2>
           <p>{{ movie.genre }} · {{ movie.language }} · {{ movie.duration }}</p>
-          <p>Cines: {{ movieCinemas(movie.id).join(", ") || "Sin funciones activas" }}</p>
+          <p>{{ movie.releaseDate ? 'Estreno: ' + movie.releaseDate : 'Próximamente' }}</p>
           <button class="primary-button" type="button" @click="router.push(`/reservas/peliculas/${movie.id}`)">Ver funciones</button>
         </div>
       </article>
@@ -39,45 +39,30 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useCatalogStore } from "../../stores/catalog";
-import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
 
 const router = useRouter();
 const catalog = useCatalogStore();
-const { movieFor, cinemaFor } = useCatalogHelpers();
-const { money, formatDate, imageUrl } = useFormat();
+const { imageUrl } = useFormat();
 
 const search = ref("");
 const genreFilter = ref("");
 const languageFilter = ref("");
 
-const availableShowtimes = computed(() =>
-  catalog.showtimes.filter((item) => item.status === "activo"),
-);
-
 const availableMovies = computed(() =>
   catalog.movies.filter((movie) => {
     const query = search.value.toLowerCase();
     return (
-      movie.status !== "inactivo" &&
+      movie.activo &&
       (!query || movie.title.toLowerCase().includes(query)) &&
       (!genreFilter.value || movie.genre === genreFilter.value) &&
-      (!languageFilter.value || movie.language === languageFilter.value) &&
-      movieCinemas(movie.id).length > 0
+      (!languageFilter.value || movie.language === languageFilter.value)
     );
   }),
 );
 
 const genres = computed(() => [...new Set(catalog.movies.map((movie) => movie.genre))]);
 const languages = computed(() => [...new Set(catalog.movies.map((movie) => movie.language))]);
-
-function movieCinemas(movieId: string) {
-  const cinemaNames = availableShowtimes.value
-    .filter((showtime) => showtime.movieId === movieId)
-    .map((showtime) => cinemaFor(showtime.cinemaId)?.name)
-    .filter(Boolean) as string[];
-  return [...new Set(cinemaNames)];
-}
 </script>
 
 <style scoped>

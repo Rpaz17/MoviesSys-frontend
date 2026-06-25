@@ -18,7 +18,7 @@
         <article v-for="movie in catalog.movies" :key="movie.id" class="card catalog-card">
           <img :src="imageUrl(movie.img)" :alt="movie.title" />
           <div class="card-body">
-            <span class="pill">{{ movie.status }}</span>
+            <span class="pill">{{ movie.activo ? 'En cartelera' : 'Inactivo' }}</span>
             <h2>{{ movie.title }}</h2>
             <p>{{ movie.genre }} · {{ movie.language }} · {{ movie.duration }}</p>
             <p>{{ movie.director }}</p>
