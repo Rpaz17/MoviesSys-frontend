@@ -34,6 +34,29 @@ export const changePasswordInputSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
 
+export const updateProfileInputSchema = z.object({
+  nombre: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  telefono: z.string().optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileInputSchema>;
+
+export const updateNotificationsInputSchema = z.object({
+  notificaciones_activas: z.boolean(),
+});
+export type UpdateNotificationsInput = z.infer<typeof updateNotificationsInputSchema>;
+
+export const userProfileSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  nombre: z.string(),
+  email: z.string().email(),
+  telefono: z.string().nullable().optional(),
+  notificaciones_activas: z.boolean().optional(),
+  id_rol: z.union([z.string(), z.number()]).optional(),
+  estado: z.string().optional(),
+});
+export type UserProfile = z.infer<typeof userProfileSchema>;
+
 export const loginResponseSchema = z.object({
   access_token: z.string(),
 });
@@ -68,5 +91,20 @@ export const authService = {
 
   async changePassword(id: string, payload: ChangePasswordInput): Promise<void> {
     await apiClient.put(`/users/${id}/password`, payload);
+  },
+
+  async getMe(): Promise<UserProfile> {
+    const { data } = await apiClient.get("/users/me");
+    return userProfileSchema.parse(data);
+  },
+
+  async updateProfile(id: string, payload: UpdateProfileInput): Promise<UserProfile> {
+    const { data } = await apiClient.put(`/users/${id}`, payload);
+    return userProfileSchema.parse(data);
+  },
+
+  async updateNotifications(id: string, payload: UpdateNotificationsInput): Promise<UserProfile> {
+    const { data } = await apiClient.patch(`/users/${id}/notificaciones`, payload);
+    return userProfileSchema.parse(data);
   },
 };
