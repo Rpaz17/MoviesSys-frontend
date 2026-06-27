@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { CheckCircle2, KeyRound, Save } from "lucide-vue-next";
+import { CheckCircle2, KeyRound, Save, XCircle } from "lucide-vue-next";
 import { vPass, vConfirm } from "../../lib/validation";
+import { useSessionStore } from "../../stores/session";
 
 const router = useRouter();
+const session = useSessionStore();
 const saved = ref(false);
 const error = ref("");
+const loading = ref(false);
 
 const form = reactive({
   current: "",
@@ -14,13 +17,25 @@ const form = reactive({
   confirm: "",
 });
 
-function savePassword() {
+async function savePassword() {
+  error.value = "";
+  if (!form.current) {
+    error.value = "Ingresa tu contrasena actual.";
+    return;
+  }
   const validation = vPass(form.next) || vConfirm(form.next, form.confirm);
   if (validation) {
     error.value = validation;
     return;
   }
-  saved.value = true;
+  loading.value = true;
+  const ok = await session.changePassword(form.current, form.next);
+  loading.value = false;
+  if (ok) {
+    saved.value = true;
+  } else {
+    error.value = "No se pudo cambiar la contrasena. Verifica tu contrasena actual.";
+  }
 }
 </script>
 
@@ -42,9 +57,9 @@ function savePassword() {
           <input v-model="form.next" class="input" type="password" placeholder="Nueva contrasena" />
           <input v-model="form.confirm" class="input" type="password" placeholder="Confirmar nueva contrasena" />
         </div>
-        <p v-if="error" class="text-xs danger">{{ error }}</p>
-        <p v-if="saved" class="text-xs success flex items-center gap-2"><CheckCircle2 class="w-4 h-4" /> Cambios guardados</p>
-        <button class="primary-button justify-center py-3" @click="savePassword"><Save class="w-4 h-4" /> Guardar cambios</button>
+        <p v-if="error" class="text-xs danger flex items-center gap-2"><XCircle class="w-4 h-4" /> {{ error }}</p>
+        <p v-if="saved" class="text-xs success flex items-center gap-2"><CheckCircle2 class="w-4 h-4" /> Contrasena actualizada correctamente</p>
+        <button class="primary-button justify-center py-3" :disabled="loading" @click="savePassword"><Save class="w-4 h-4" /> {{ loading ? 'Guardando...' : 'Guardar cambios' }}</button>
       </div>
     </div>
   </div>

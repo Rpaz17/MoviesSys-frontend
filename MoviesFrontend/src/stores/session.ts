@@ -26,10 +26,15 @@ export const useSessionStore = defineStore("session", () => {
     }
   }
 
+  function extractUserId(decoded: Record<string, string>): string {
+    return decoded.sub || decoded.id || decoded.userId || decoded.user_id || decoded.usuario_id || "";
+  }
+
   function setUserFromToken(token: string, fallbackEmail: string) {
     const decoded = decodeToken(token);
     const name = decoded.nombre || fallbackEmail;
     user.value = {
+      id: extractUserId(decoded),
       name,
       avatar: name.charAt(0).toUpperCase(),
       email: decoded.email || fallbackEmail,
@@ -48,6 +53,7 @@ export const useSessionStore = defineStore("session", () => {
       }
       const name = decoded.nombre || decoded.email || "";
       user.value = {
+        id: extractUserId(decoded),
         name,
         avatar: name.charAt(0).toUpperCase(),
         email: decoded.email || "",
@@ -75,13 +81,20 @@ export const useSessionStore = defineStore("session", () => {
     try {
       const res = await authService.signup({ nombre: name, email, password });
       localStorage.setItem("access_token", res.access_token);
+      const decoded = decodeToken(res.access_token);
       const initials = name
         .split(" ")
         .filter(Boolean)
         .slice(0, 2)
         .map((p) => p[0]?.toUpperCase())
         .join("");
-      user.value = { name, avatar: initials || "CL", email, role: "cliente" };
+      user.value = {
+        id: extractUserId(decoded),
+        name,
+        avatar: initials || "CL",
+        email,
+        role: "cliente",
+      };
       return true;
     } catch {
       return false;
@@ -97,5 +110,22 @@ export const useSessionStore = defineStore("session", () => {
     user.value = null;
   }
 
-  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout };
+  async function changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const token = localStorage.getItem("access_token");
+    if (!token) return false;
+    const decoded = decodeToken(token);
+    const userId = extractUserId(decoded);
+    if (!userId) {
+      console.warn("changePassword: no se encontro ID de usuario en el token. Claims disponibles:", Object.keys(decoded));
+      return false;
+    }
+    try {
+      await authService.changePassword(userId, { currentPassword, newPassword });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout, changePassword };
 });

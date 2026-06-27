@@ -6,6 +6,7 @@ export type AuthView = "home" | "profile" | "changepass" | "customers" |
 
 // ─── Session ──────────────────────────────────────────────────────────────────
 export interface SessionUser {
+  id:     string;
   name:   string;
   avatar: string;
   email:  string;

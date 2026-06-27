@@ -28,6 +28,12 @@ export const resetPasswordInputSchema = z.object({
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordInputSchema>;
 
+export const changePasswordInputSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(6),
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
+
 export const loginResponseSchema = z.object({
   access_token: z.string(),
 });
@@ -58,5 +64,9 @@ export const authService = {
 
   async resetPassword(payload: ResetPasswordInput): Promise<void> {
     await apiClient.post("/auth/reset-password", payload);
+  },
+
+  async changePassword(id: string, payload: ChangePasswordInput): Promise<void> {
+    await apiClient.put(`/users/${id}/password`, payload);
   },
 };
