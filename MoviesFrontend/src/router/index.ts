@@ -47,7 +47,7 @@ export const router = createRouter({
     { path: "/login", name: "login", component: LoginView, meta: { guest: true } },
     { path: "/register", name: "register", component: RegisterView, meta: { guest: true } },
     { path: "/forgot", name: "forgot", component: ForgotPasswordView, meta: { guest: true } },
-    { path: "/reset", name: "reset", component: ResetPasswordView, meta: { guest: true } },
+    { path: "/reset-password", name: "reset", component: ResetPasswordView, meta: { guest: true } },
 
     // Home
     { path: "/home", name: "home", component: HomeRouterView, meta: { auth: true } },
