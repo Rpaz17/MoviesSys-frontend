@@ -68,12 +68,6 @@ export const cineSchema = z.object({
 });
 export type Cine = z.infer<typeof cineSchema>;
 
-export const ciudadSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  nombre: z.string(),
-});
-export type Ciudad = z.infer<typeof ciudadSchema>;
-
 const cineEnFuncionSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
@@ -149,10 +143,5 @@ export const peliculasService = {
   async getCines(): Promise<Cine[]> {
     const { data } = await apiClient.get<Cine[]>("/cines");
     return z.array(cineSchema).parse(data);
-  },
-
-  async getCiudades(): Promise<Ciudad[]> {
-    const { data } = await apiClient.get<Ciudad[]>("/ciudades");
-    return z.array(ciudadSchema).parse(data);
   },
 };

@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { peliculasService } from "../services/peliculas.service";
 import type { CatalogMovie, Cinema, Customer, Room, Showtime } from "../types";
+import { ciudadesService } from "../services/ciudades.services";
 
 export const useCatalogStore = defineStore("catalog", () => {
   const movies = ref<CatalogMovie[]>([]);
@@ -25,7 +26,7 @@ export const useCatalogStore = defineStore("catalog", () => {
         peliculasService.getIdiomas().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getIdiomas>>),
         peliculasService.getGeneros().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>),
         peliculasService.getCines().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getCines>>),
-        peliculasService.getCiudades().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getCiudades>>),
+        ciudadesService.getAll().catch(() => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>),
       ]);
 
       idiomaNames.value = new Map(idiomas.map((i) => [String(i.id), i.nombre]));
