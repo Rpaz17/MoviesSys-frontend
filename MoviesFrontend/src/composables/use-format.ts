@@ -4,8 +4,17 @@ export function useFormat() {
   }
 
   function formatDate(dateStr: string) {
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      const [y, m, d] = dateStr.split(/[-T]/);
+      if (y && m && d) return `${d}/${m}/${y}`;
+      return dateStr;
+    }
+    return new Intl.DateTimeFormat("es-HN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
   }
 
   function imageUrl(id?: string) {

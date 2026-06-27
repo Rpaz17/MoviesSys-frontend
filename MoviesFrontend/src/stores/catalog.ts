@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { peliculasService } from "../services/peliculas.service";
+import { authService } from "../services/auth.service";
 import type { CatalogMovie, Cinema, Customer, Room, Showtime } from "../types";
 
 export const useCatalogStore = defineStore("catalog", () => {
@@ -234,6 +235,32 @@ export const useCatalogStore = defineStore("catalog", () => {
     });
   }
 
+  async function loadCustomers(params?: { nombre?: string; email?: string; estado?: string }): Promise<void> {
+    try {
+      const data = await authService.findAllUsers(params);
+      customers.value = data.map((u) => {
+        const statusMap: Record<string, Customer["status"]> = {
+          active: "activo",
+          inactive: "inactivo",
+          suspended: "suspendido",
+        };
+        return {
+          id: String(u.id),
+          name: u.nombre,
+          email: u.email,
+          phone: u.telefono ?? "",
+          status: statusMap[u.estado ?? ""] ?? "activo",
+          registeredAt: u.created_at ?? "",
+          reservations: 0,
+          spent: "$0",
+          avatar: u.nombre.charAt(0).toUpperCase(),
+        };
+      });
+    } catch {
+      customers.value = [];
+    }
+  }
+
   return {
     movies,
     cinemas,
@@ -244,6 +271,7 @@ export const useCatalogStore = defineStore("catalog", () => {
     loadFromAPI,
     loadFunctionsForMovie,
     loadAllShowtimes,
+    loadCustomers,
     movieById,
     cinemaById,
     roomById,
