@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
-import { CheckCircle2, Save, User } from "lucide-vue-next";
+import { CheckCircle2, Save, User, XCircle } from "lucide-vue-next";
 import { useSessionStore } from "../../stores/session";
 import { vName, vEmail } from "../../lib/validation";
 
@@ -9,22 +9,31 @@ const router = useRouter();
 const session = useSessionStore();
 const saved = ref(false);
 const error = ref("");
+const loading = ref(false);
 
 const form = reactive({
   name: session.user?.name ?? "",
   email: session.user?.email ?? "",
-  phone: "",
-  notifications: true,
+  phone: session.user?.phone ?? "",
+  notifications: session.user?.notifications ?? true,
 });
 
-function saveProfile() {
+async function saveProfile() {
+  error.value = "";
+  saved.value = false;
   const validation = vName(form.name) || vEmail(form.email);
   if (validation) {
     error.value = validation;
     return;
   }
-  session.updateUser({ ...session.user!, name: form.name, email: form.email });
-  saved.value = true;
+  loading.value = true;
+  const ok = await session.updateProfile(form.name, form.email, form.phone, form.notifications);
+  loading.value = false;
+  if (ok) {
+    saved.value = true;
+  } else {
+    error.value = "No se pudo actualizar el perfil.";
+  }
 }
 </script>
 
@@ -54,9 +63,9 @@ function saveProfile() {
             <input v-model="form.notifications" type="checkbox" />
           </label>
         </div>
-        <p v-if="error" class="text-xs danger">{{ error }}</p>
-        <p v-if="saved" class="text-xs success flex items-center gap-2"><CheckCircle2 class="w-4 h-4" /> Cambios guardados</p>
-        <button class="primary-button justify-center py-3" @click="saveProfile"><Save class="w-4 h-4" /> Guardar cambios</button>
+        <p v-if="error" class="text-xs danger flex items-center gap-2"><XCircle class="w-4 h-4" /> {{ error }}</p>
+        <p v-if="saved" class="text-xs success flex items-center gap-2"><CheckCircle2 class="w-4 h-4" /> Perfil actualizado</p>
+        <button class="primary-button justify-center py-3" :disabled="loading" @click="saveProfile"><Save class="w-4 h-4" /> {{ loading ? 'Guardando...' : 'Guardar cambios' }}</button>
       </div>
     </div>
   </div>

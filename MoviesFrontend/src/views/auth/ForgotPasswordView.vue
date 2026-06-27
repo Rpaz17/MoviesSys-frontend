@@ -3,18 +3,27 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { AlertCircle, Film, Mail, XCircle } from "lucide-vue-next";
 import { vEmail } from "../../lib/validation";
+import { authService } from "../../services/auth.service";
 
 const route = useRoute();
 const router = useRouter();
 
-const status = ref<"idle" | "sent" | "error">("idle");
+const status = ref<"idle" | "loading" | "sent" | "error">("idle");
 const form = reactive({ email: "" });
 const error = ref("");
 
-function submit() {
+async function submit() {
   error.value = "";
+  status.value = "idle";
   if (vEmail(form.email)) { error.value = "Ingresa un correo valido."; return; }
-  status.value = "sent";
+  status.value = "loading";
+  try {
+    await authService.forgotPassword({ email: form.email });
+    status.value = "sent";
+  } catch {
+    status.value = "error";
+    error.value = "No se pudo enviar el enlace. Verifica el correo.";
+  }
 }
 </script>
 
@@ -47,9 +56,9 @@ function submit() {
           <span>{{ error }}</span>
         </div>
 
-        <button class="primary-button auth-submit" :disabled="status === 'sent'">
+        <button class="primary-button auth-submit" :disabled="status === 'loading' || status === 'sent'">
           <AlertCircle class="w-4 h-4" />
-          Enviar enlace
+          {{ status === 'loading' ? 'Enviando...' : 'Enviar enlace' }}
         </button>
       </form>
 

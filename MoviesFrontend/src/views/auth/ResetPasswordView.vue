@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ArrowRight, CheckCircle2, Eye, EyeOff, Film, XCircle } from "lucide-vue-next";
 import { vConfirm, vPass, strength } from "../../lib/validation";
+import { authService } from "../../services/auth.service";
 
 const route = useRoute();
 const router = useRouter();
@@ -12,12 +13,27 @@ const status = ref<"idle" | "loading" | "success" | "error">("idle");
 const form = reactive({ password: "", confirm: "" });
 const error = ref("");
 const passStrength = computed(() => strength(form.password));
+const token = computed(() => String(route.query.token || ""));
 
-function submit() {
+onMounted(() => {
+  if (!token.value) {
+    status.value = "error";
+    error.value = "Enlace invalido. Solicita uno nuevo desde la pagina de recuperacion.";
+  }
+});
+
+async function submit() {
   error.value = "";
   const validation = vPass(form.password) || vConfirm(form.password, form.confirm);
   if (validation) { error.value = validation; return; }
-  status.value = "success";
+  status.value = "loading";
+  try {
+    await authService.resetPassword({ token: token.value, newPassword: form.password });
+    status.value = "success";
+  } catch {
+    status.value = "error";
+    error.value = "El enlace expiro o es invalido.";
+  }
 }
 </script>
 
@@ -39,7 +55,7 @@ function submit() {
         <span>Contrasena actualizada.</span>
       </div>
 
-      <form class="auth-form" @submit.prevent="submit">
+      <form v-if="token" class="auth-form" @submit.prevent="submit">
         <label class="auth-field">
           <span class="auth-label">Contrasena</span>
           <div class="auth-pass-wrap">
@@ -67,7 +83,8 @@ function submit() {
       </form>
 
       <div class="auth-footer">
-        <button class="auth-link" @click="router.push({ path: '/login', query: route.query })">Iniciar sesion</button>
+        <button v-if="!token" class="auth-link" @click="router.push('/forgot')">Solicitar nuevo enlace</button>
+        <button v-else class="auth-link" @click="router.push('/login')">Iniciar sesion</button>
       </div>
     </div>
   </div>

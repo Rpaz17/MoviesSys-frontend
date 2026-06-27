@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 import { authService } from "../services/auth.service";
+import type { UserProfile } from "../services/auth.service";
 import type { SessionUser } from "../types";
 
 export const useSessionStore = defineStore("session", () => {
@@ -9,10 +10,14 @@ export const useSessionStore = defineStore("session", () => {
   const isAdmin = computed(() => user.value?.role === "administrador");
   const isReceptionist = computed(() => user.value?.role === "recepcionista");
 
-  function mapRole(role: string): SessionUser["role"] {
-    switch (role) {
+  function mapRole(role: string | number): SessionUser["role"] {
+    const r = String(role);
+    switch (r) {
+      case "1":
       case "admin": return "administrador";
+      case "2":
       case "client": return "cliente";
+      case "3":
       case "receptionist": return "recepcionista";
       default: return "cliente";
     }
@@ -26,18 +31,42 @@ export const useSessionStore = defineStore("session", () => {
     }
   }
 
+  function extractUserId(decoded: Record<string, string>): string {
+    return decoded.sub || decoded.id || decoded.userId || decoded.user_id || decoded.usuario_id || "";
+  }
+
+  function extractName(decoded: Record<string, string>, fallback: string): string {
+    return decoded.nombre || decoded.name || fallback;
+  }
+
+  function applyUserProfile(profile: UserProfile) {
+    const name = profile.nombre;
+    user.value = {
+      id: String(profile.id),
+      name,
+      avatar: name.charAt(0).toUpperCase(),
+      email: profile.email,
+      role: mapRole(profile.id_rol ?? ""),
+      phone: profile.telefono ?? "",
+      notifications: profile.notificaciones_activas ?? true,
+    };
+  }
+
   function setUserFromToken(token: string, fallbackEmail: string) {
     const decoded = decodeToken(token);
-    const name = decoded.nombre || fallbackEmail;
+    const name = extractName(decoded, fallbackEmail);
     user.value = {
+      id: extractUserId(decoded),
       name,
       avatar: name.charAt(0).toUpperCase(),
       email: decoded.email || fallbackEmail,
       role: mapRole(decoded.role),
+      phone: "",
+      notifications: true,
     };
   }
 
-  function restoreSession() {
+  async function restoreSession() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
     try {
@@ -46,13 +75,17 @@ export const useSessionStore = defineStore("session", () => {
         localStorage.removeItem("access_token");
         return;
       }
-      const name = decoded.nombre || decoded.email || "";
+      const name = extractName(decoded, decoded.email || "");
       user.value = {
+        id: extractUserId(decoded),
         name,
         avatar: name.charAt(0).toUpperCase(),
         email: decoded.email || "",
         role: mapRole(decoded.role),
+        phone: "",
+        notifications: true,
       };
+      authService.getMe().then(applyUserProfile).catch(() => {});
     } catch {
       localStorage.removeItem("access_token");
     }
@@ -64,7 +97,10 @@ export const useSessionStore = defineStore("session", () => {
     try {
       const res = await authService.login({ email, password });
       localStorage.setItem("access_token", res.access_token);
+      const decoded = decodeToken(res.access_token);
+      console.log("JWT payload:", decoded);
       setUserFromToken(res.access_token, email);
+      authService.getMe().then(applyUserProfile).catch(() => {});
       return true;
     } catch {
       return false;
@@ -75,13 +111,22 @@ export const useSessionStore = defineStore("session", () => {
     try {
       const res = await authService.signup({ nombre: name, email, password });
       localStorage.setItem("access_token", res.access_token);
+      const decoded = decodeToken(res.access_token);
       const initials = name
         .split(" ")
         .filter(Boolean)
         .slice(0, 2)
         .map((p) => p[0]?.toUpperCase())
         .join("");
-      user.value = { name, avatar: initials || "CL", email, role: "cliente" };
+      user.value = {
+        id: extractUserId(decoded),
+        name,
+        avatar: initials || "CL",
+        email,
+        role: "cliente",
+        phone: "",
+        notifications: true,
+      };
       return true;
     } catch {
       return false;
@@ -97,5 +142,42 @@ export const useSessionStore = defineStore("session", () => {
     user.value = null;
   }
 
-  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout };
+  async function changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+    const token = localStorage.getItem("access_token");
+    if (!token) return false;
+    const userId = extractUserId(decodeToken(token));
+    if (!userId) {
+      console.warn("changePassword: no se encontro ID de usuario en el token. Claims disponibles:", Object.keys(decoded));
+      return false;
+    }
+    try {
+      await authService.changePassword(userId, { currentPassword, newPassword });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function updateProfile(name: string, email: string, phone: string, notifications: boolean): Promise<boolean> {
+    const token = localStorage.getItem("access_token");
+    if (!token) return false;
+    const userId = extractUserId(decodeToken(token));
+    if (!userId) return false;
+    try {
+      const profile = await authService.updateProfile(userId, {
+        nombre: name,
+        email,
+        telefono: phone || undefined,
+      });
+      authService.updateNotifications(userId, {
+        notificaciones_activas: notifications,
+      }).catch(() => {});
+      applyUserProfile(profile);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout, changePassword, updateProfile };
 });

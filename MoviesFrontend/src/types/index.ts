@@ -6,10 +6,13 @@ export type AuthView = "home" | "profile" | "changepass" | "customers" |
 
 // ─── Session ──────────────────────────────────────────────────────────────────
 export interface SessionUser {
-  name:   string;
-  avatar: string;
-  email:  string;
-  role:   "cliente" | "administrador" | "recepcionista";
+  id:             string;
+  name:           string;
+  avatar:         string;
+  email:          string;
+  role:           "cliente" | "administrador" | "recepcionista";
+  phone:          string;
+  notifications:  boolean;
 }
 
 // ─── Customers ────────────────────────────────────────────────────────────────
