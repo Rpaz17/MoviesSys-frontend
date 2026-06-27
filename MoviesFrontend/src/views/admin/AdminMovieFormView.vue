@@ -58,7 +58,7 @@ import { useRoute, useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
 import { useFormat } from "../../composables/use-format";
-import { POSTER_SAMPLES } from "../../data/mockData";
+import { POSTER_SAMPLES } from "../../data/posterSamples";
 import type { CatalogMovie } from "../../types";
 
 const route = useRoute();

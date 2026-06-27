@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { CalendarClock, LogOut, Ticket, User } from "lucide-vue-next";
 import { useSessionStore } from "../../stores/session";
 
 const router = useRouter();
 const session = useSessionStore();
+
+const greeting = computed(() => {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 18) return "Buenas tardes";
+  return "Buenas noches";
+});
 
 function logout() {
   session.logout();
@@ -20,7 +28,7 @@ function logout() {
           <div class="avatar hv-avatar">{{ session.user?.avatar }}</div>
           <div>
             <p class="hv-session-label">Sesion activa</p>
-            <h2 class="hv-greeting">Hola, {{ session.user?.name.split(' ')[0] }}</h2>
+            <h2 class="hv-greeting">{{ greeting }}, {{ session.user?.name.split(' ')[0] }}</h2>
             <div class="hv-role-row">
               <User class="w-3 h-3 success" />
               <span class="mono" style="color:#4caf7d;font-size:11px;text-transform:uppercase;letter-spacing:.06em">{{ session.user?.role }}</span>

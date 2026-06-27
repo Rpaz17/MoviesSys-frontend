@@ -55,7 +55,7 @@ const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" |
   format: "2D",
 });
 
-const activeMovies = computed(() => catalog.movies.filter((item) => item.status !== "inactivo"));
+const activeMovies = computed(() => catalog.movies.filter((item) => item.activo));
 const activeCinemas = computed(() => catalog.cinemas.filter((item) => item.status === "activo"));
 const filteredRooms = computed(() => catalog.rooms.filter((room) => room.cinemaId === showtimeForm.cinemaId && room.status === "activo"));
 

@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
   CalendarClock, ChevronDown, ChevronRight, Clapperboard, Film, LayoutGrid,
   Lock, LogOut, MapPin, Percent, Shield, Ticket, User,
 } from "lucide-vue-next";
 import { useSessionStore } from "../stores/session";
+import { useCatalogStore } from "../stores/catalog";
+import { useReservationsStore } from "../stores/reservations";
 
 const router = useRouter();
 const session = useSessionStore();
 const open = ref(false);
+
+watch(() => session.isAuthenticated, (authed) => {
+  if (authed) {
+    useCatalogStore().loadFromAPI();
+    useReservationsStore().loadFromAPI();
+  }
+});
+
+onMounted(() => {
+  useCatalogStore().loadFromAPI();
+  useReservationsStore().loadFromAPI();
+});
 
 const adminLinks = [
   { label: "Dashboard", to: "/admin" },

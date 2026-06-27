@@ -28,8 +28,6 @@ export type SortKey = "name" | "registeredAt" | "reservations" | "spent";
 export type SortDir = "asc" | "desc";
 
 // ─── Movies ───────────────────────────────────────────────────────────────────
-export type MovieStatus = "en-cartelera" | "proximamente" | "inactivo";
-
 export interface CatalogMovie {
   id:           string;
   title:        string;
@@ -39,7 +37,7 @@ export interface CatalogMovie {
   duration:     string;
   releaseDate:  string;
   director:     string;
-  status:       MovieStatus;
+  activo:       boolean;
   reservations: number;
   revenue:      string;
   img:          string;

@@ -8,13 +8,15 @@
       <button class="ghost-button" type="button" @click="router.push('/reservas/peliculas')">Volver a películas</button>
     </div>
 
-    <div v-if="!movieData" class="empty-state card">Película no encontrada.</div>
+    <div v-if="isLoading" class="empty-state card">Cargando funciones...</div>
+
+    <div v-else-if="!movieData" class="empty-state card">Película no encontrada.</div>
 
     <div v-else class="movie-split">
       <aside class="card movie-info-card">
         <img :src="imageUrl(movieData.img)" :alt="movieData.title" class="movie-poster" />
         <div class="movie-info-body">
-          <span class="pill">{{ movieData.status }}</span>
+          <span class="pill">{{ movieData.activo ? 'En cartelera' : 'Inactivo' }}</span>
           <h2>{{ movieData.title }}</h2>
           <p>{{ movieData.genre }} · {{ movieData.language }}</p>
           <p>{{ movieData.rating }} · {{ movieData.duration }}</p>
@@ -53,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useCatalogStore } from "../../stores/catalog";
 import { useSessionStore } from "../../stores/session";
@@ -67,6 +69,8 @@ const catalog = useCatalogStore();
 const session = useSessionStore();
 const { movieFor, cinemaFor, roomFor, priceFor } = useCatalogHelpers();
 const { money, formatDate, imageUrl } = useFormat();
+
+const isLoading = ref(false);
 
 const movieId = computed(() => String(route.params.movieId));
 const movieData = computed(() => catalog.movieById(movieId.value));
@@ -83,6 +87,15 @@ const movieShowtimeGroups = computed(() =>
     }))
     .filter((group) => group.items.length > 0),
 );
+
+onMounted(async () => {
+  if (catalog.cinemas.length === 0) {
+    await catalog.loadFromAPI();
+  }
+  isLoading.value = true;
+  await catalog.loadFunctionsForMovie(movieId.value);
+  isLoading.value = false;
+});
 
 function handleReservar(showtime: Showtime) {
   if (!session.user) {

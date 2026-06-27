@@ -1,11 +1,11 @@
-import { ref, computed, type MaybeRefOrGetter, toValue } from "vue";
+import { ref, type MaybeRefOrGetter, toValue } from "vue";
 import { peliculasService } from "../services/peliculas.service";
 import type { Pelicula, CreatePeliculaInput, UpdatePeliculaInput, UploadPosterInput, FuncionCine } from "../services/peliculas.service";
 
 export interface PeliculaFilters {
   titulo?: MaybeRefOrGetter<string | undefined>;
-  genero?: MaybeRefOrGetter<string | undefined>;
-  idioma?: MaybeRefOrGetter<string | undefined>;
+  idIdioma?: MaybeRefOrGetter<string | undefined>;
+  idGenero?: MaybeRefOrGetter<string | undefined>;
   fechaEstreno?: MaybeRefOrGetter<string | undefined>;
   activo?: MaybeRefOrGetter<boolean | undefined>;
 }
@@ -16,25 +16,17 @@ export function usePeliculas() {
   const isPending = ref(false);
   const error = ref<string | null>(null);
 
-  const generos = computed(() =>
-    [...new Set(peliculas.value.map((p) => p.generos?.nombre).filter(Boolean))] as string[],
-  );
-
-  const idiomas = computed(() =>
-    [...new Set(peliculas.value.map((p) => p.idiomas?.nombre).filter(Boolean))] as string[],
-  );
-
   function filtrar(filters: PeliculaFilters): Pelicula[] {
     const t = toValue(filters.titulo);
-    const g = toValue(filters.genero);
-    const i = toValue(filters.idioma);
+    const idioma = toValue(filters.idIdioma);
+    const genero = toValue(filters.idGenero);
     const f = toValue(filters.fechaEstreno);
     const a = toValue(filters.activo);
 
     return peliculas.value.filter((p) => {
       if (t && !p.titulo.toLowerCase().includes(t.toLowerCase())) return false;
-      if (g && p.generos?.nombre?.toLowerCase() !== g.toLowerCase()) return false;
-      if (i && p.idiomas?.nombre?.toLowerCase() !== i.toLowerCase()) return false;
+      if (idioma && String(p.id_idioma) !== idioma) return false;
+      if (genero && String(p.id_genero) !== genero) return false;
       if (f && p.fecha_estreno !== f) return false;
       if (a !== undefined && a !== null && p.activo !== a) return false;
       return true;
@@ -135,8 +127,6 @@ export function usePeliculas() {
   return {
     peliculas,
     funciones,
-    generos,
-    idiomas,
     isPending,
     error,
     fetchPeliculas,
