@@ -88,7 +88,6 @@ const feedbackType = ref<"success" | "error">("success");
 const generos = ref<Genero[]>([]);
 const idiomas = ref<Idioma[]>([]);
 
-const existing = isEdit.value ? catalog.movieById(String(route.params.id)) : undefined;
 const defaultMovieForm: MovieFormState = {
   id: "",
   title: "",
@@ -105,11 +104,7 @@ const defaultMovieForm: MovieFormState = {
   img: "photo-1489599849927-2ee91cede3ba",
 };
 
-const movieForm = reactive<MovieFormState>(
-  existing
-    ? { ...existing, status: existing.activo ? "en-cartelera" : "inactivo" }
-    : { ...defaultMovieForm }
-);
+const movieForm = reactive<MovieFormState>({ ...defaultMovieForm });
 
 onMounted(async () => {
   const [genreData, languageData] = await Promise.all([
@@ -118,7 +113,29 @@ onMounted(async () => {
   ]);
   generos.value = genreData.filter((item) => item.activo !== false);
   idiomas.value = languageData.filter((item) => item.activo !== false);
+
+  if (isEdit.value) {
+    await hydrateEditForm();
+  }
 });
+
+async function hydrateEditForm() {
+  if (catalog.movies.length === 0) {
+    await catalog.loadFromAPI();
+  }
+
+  const existing = catalog.movieById(String(route.params.id));
+  if (!existing) {
+    feedbackType.value = "error";
+    feedback.value = "No se encontró la película para editar.";
+    return;
+  }
+
+  Object.assign(movieForm, {
+    ...existing,
+    status: existing.activo ? "en-cartelera" : "inactivo",
+  });
+}
 
 function loadMovieImage(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
@@ -185,7 +202,7 @@ async function saveMovie() {
   isSaving.value = true;
   try {
     if (isEdit.value && movieForm.id) {
-      await peliculasService.update(movieForm.id, {
+      const updated = await peliculasService.update(movieForm.id, {
         titulo: movieForm.title,
         sinopsis: buildSynopsis(),
         poster_url: posterUrl,
@@ -195,6 +212,7 @@ async function saveMovie() {
         activo: movieForm.status !== "inactivo",
       });
       await savePoster(movieForm.id);
+      movieForm.id = String(updated.id);
       feedback.value = "Película actualizada correctamente.";
     } else {
       const created = await peliculasService.create({
@@ -212,7 +230,9 @@ async function saveMovie() {
     }
     feedbackType.value = "success";
     await catalog.loadFromAPI();
-    router.push("/admin/peliculas");
+    window.setTimeout(() => {
+      router.push("/admin/peliculas");
+    }, isEdit.value ? 1200 : 700);
   } catch (err) {
     feedbackType.value = "error";
     feedback.value = err instanceof Error ? err.message : "No se pudo guardar la película.";
