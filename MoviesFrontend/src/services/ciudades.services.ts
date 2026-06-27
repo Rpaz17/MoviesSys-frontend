@@ -24,12 +24,12 @@ export const ciudadesService = {
     return z.array(ciudadSchema).parse(data);
   },
 
-  async create(payload: CreateCiudadInput): Promise<Ciudad> {
+  async createCiudad(payload: CreateCiudadInput): Promise<Ciudad> {
     const { data } = await apiClient.post("/ciudades", payload);
     return ciudadSchema.parse(data);
   },
 
-  async update(
+  async updateCiudad(
     id: number | string,
     payload: UpdateCiudadInput,
   ): Promise<Ciudad> {

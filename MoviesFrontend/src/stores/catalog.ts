@@ -16,22 +16,45 @@ export const useCatalogStore = defineStore("catalog", () => {
   const ciudadNames = ref<Map<string, string>>(new Map());
 
   const movieById = (id: string) => movies.value.find((item) => item.id === id);
-  const cinemaById = (id: string) => cinemas.value.find((item) => item.id === id);
+  const cinemaById = (id: string) =>
+    cinemas.value.find((item) => item.id === id);
   const roomById = (id: string) => rooms.value.find((item) => item.id === id);
 
   async function loadFromAPI(): Promise<void> {
     try {
       const [data, idiomas, generos, cineData, ciudadData] = await Promise.all([
-        peliculasService.search().catch(() => [] as Awaited<ReturnType<typeof peliculasService.search>>),
-        peliculasService.getIdiomas().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getIdiomas>>),
-        peliculasService.getGeneros().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>),
-        peliculasService.getCines().catch(() => [] as Awaited<ReturnType<typeof peliculasService.getCines>>),
-        ciudadesService.getAll().catch(() => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>),
+        peliculasService
+          .search()
+          .catch(
+            () => [] as Awaited<ReturnType<typeof peliculasService.search>>,
+          ),
+        peliculasService
+          .getIdiomas()
+          .catch(
+            () => [] as Awaited<ReturnType<typeof peliculasService.getIdiomas>>,
+          ),
+        peliculasService
+          .getGeneros()
+          .catch(
+            () => [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>,
+          ),
+        peliculasService
+          .getCines()
+          .catch(
+            () => [] as Awaited<ReturnType<typeof peliculasService.getCines>>,
+          ),
+        ciudadesService
+          .getAll()
+          .catch(
+            () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
+          ),
       ]);
 
       idiomaNames.value = new Map(idiomas.map((i) => [String(i.id), i.nombre]));
       generoNames.value = new Map(generos.map((g) => [String(g.id), g.nombre]));
-      ciudadNames.value = new Map(ciudadData.map((c) => [String(c.id), c.nombre]));
+      ciudadNames.value = new Map(
+        ciudadData.map((c) => [String(c.id), c.nombre]),
+      );
 
       movies.value = data.map((m) => ({
         id: String(m.id),
@@ -89,7 +112,10 @@ export const useCatalogStore = defineStore("catalog", () => {
         const cinemaId = cine.id;
         const cinemaName = cine.name;
 
-        if (!rooms.value.find((r) => r.id === roomId) && !newRooms.find((r) => r.id === roomId)) {
+        if (
+          !rooms.value.find((r) => r.id === roomId) &&
+          !newRooms.find((r) => r.id === roomId)
+        ) {
           newRooms.push({
             id: roomId,
             name: roomName,
@@ -140,7 +166,12 @@ export const useCatalogStore = defineStore("catalog", () => {
         cinemas.value.map((cine) =>
           peliculasService
             .getFunciones(movie.id, cine.id)
-            .then((data) => ({ movieId: movie.id, cinemaId: cine.id, cineName: cine.name, data })),
+            .then((data) => ({
+              movieId: movie.id,
+              cinemaId: cine.id,
+              cineName: cine.name,
+              data,
+            })),
         ),
       ),
     );
@@ -156,7 +187,10 @@ export const useCatalogStore = defineStore("catalog", () => {
         const roomId = String(f.salas.id);
         const roomName = f.salas.nombre;
 
-        if (!rooms.value.find((r) => r.id === roomId) && !newRooms.find((r) => r.id === roomId)) {
+        if (
+          !rooms.value.find((r) => r.id === roomId) &&
+          !newRooms.find((r) => r.id === roomId)
+        ) {
           newRooms.push({
             id: roomId,
             name: roomName,
@@ -235,6 +269,16 @@ export const useCatalogStore = defineStore("catalog", () => {
     });
   }
 
+  async function createCity(nombre: string): Promise<void> {
+    await ciudadesService.createCiudad({ nombre });
+    await loadFromAPI();
+  }
+
+  async function updateCity(id: string, nombre: string): Promise<void> {
+    await ciudadesService.updateCiudad(id, { nombre });
+    await loadFromAPI();
+  }
+
   return {
     movies,
     cinemas,
@@ -254,5 +298,7 @@ export const useCatalogStore = defineStore("catalog", () => {
     upsertCinema,
     upsertRoom,
     toggleCustomerStatus,
+    createCity,
+    updateCity,
   };
 });
