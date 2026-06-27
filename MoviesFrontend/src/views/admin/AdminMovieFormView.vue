@@ -82,6 +82,7 @@ const { imageUrl } = useFormat();
 
 const isEdit = computed(() => !!route.params.id);
 const isSaving = ref(false);
+const selectedPosterFile = ref<File | null>(null);
 const feedback = ref("");
 const feedbackType = ref<"success" | "error">("success");
 const generos = ref<Genero[]>([]);
@@ -122,6 +123,7 @@ onMounted(async () => {
 function loadMovieImage(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
+  selectedPosterFile.value = file;
   const reader = new FileReader();
   reader.onload = () => {
     movieForm.img = String(reader.result);
@@ -142,10 +144,27 @@ function buildSynopsis() {
   return details.length ? details.join(". ") : `Película ${movieForm.title}`;
 }
 
+function getPosterUrlForBackend() {
+  if (movieForm.img.startsWith("data:")) return "";
+  return imageUrl(movieForm.img);
+}
+
+async function savePoster(movieId: string | number) {
+  const posterUrl = getPosterUrlForBackend();
+  if (!posterUrl) {
+    throw new Error("El backend solo acepta una URL para el póster. Usa URL de imagen o un póster de muestra.");
+  }
+  const updated = await peliculasService.uploadPoster(movieId, { posterUrl });
+  movieForm.img = updated.poster_url ?? posterUrl;
+  selectedPosterFile.value = null;
+  return updated;
+}
+
 async function saveMovie() {
   feedback.value = "";
   const genreId = findCatalogId(generos.value, movieForm.genre);
   const languageId = findCatalogId(idiomas.value, movieForm.language);
+  const posterUrl = getPosterUrlForBackend();
 
   if (!session.user?.id) {
     feedbackType.value = "error";
@@ -157,6 +176,11 @@ async function saveMovie() {
     feedback.value = "Selecciona un género e idioma existentes.";
     return;
   }
+  if (!posterUrl) {
+    feedbackType.value = "error";
+    feedback.value = "El backend solo acepta una URL para el póster. Usa URL de imagen o un póster de muestra.";
+    return;
+  }
 
   isSaving.value = true;
   try {
@@ -164,23 +188,26 @@ async function saveMovie() {
       await peliculasService.update(movieForm.id, {
         titulo: movieForm.title,
         sinopsis: buildSynopsis(),
-        poster_url: movieForm.img,
+        poster_url: posterUrl,
         fecha_estreno: movieForm.releaseDate,
         id_genero: Number(genreId),
         id_idioma: Number(languageId),
         activo: movieForm.status !== "inactivo",
       });
+      await savePoster(movieForm.id);
       feedback.value = "Película actualizada correctamente.";
     } else {
-      await peliculasService.create({
+      const created = await peliculasService.create({
         titulo: movieForm.title,
         sinopsis: buildSynopsis(),
-        poster_url: movieForm.img,
+        poster_url: posterUrl,
         genero: String(genreId),
         idioma: String(languageId),
         fecha_estreno: movieForm.releaseDate,
         uploaded_by: session.user.id,
       });
+      movieForm.id = String(created.id);
+      await savePoster(created.id);
       feedback.value = "Película creada correctamente.";
     }
     feedbackType.value = "success";

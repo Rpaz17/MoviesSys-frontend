@@ -132,8 +132,9 @@ export const peliculasService = {
   async uploadPoster(
     id: number | string,
     payload: UploadPosterInput,
-  ): Promise<void> {
-    await apiClient.post(`/peliculas/${id}/poster`, payload);
+  ): Promise<Pelicula> {
+    const { data } = await apiClient.post(`/peliculas/${id}/poster`, payload);
+    return peliculaSchema.parse(data);
   },
 
   async getFunciones(
