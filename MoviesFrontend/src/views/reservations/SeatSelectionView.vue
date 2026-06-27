@@ -40,11 +40,8 @@
                             :class="{
                                 reserved: isReserved(asiento),
                                 selected: isSelected(asiento),
-                                blocked: isBlocking(asiento.id),
                             }"
-                            :disabled="
-                                isReserved(asiento) || isBlocking(asiento.id)
-                            "
+                            :disabled="isReserved(asiento)"
                             @click="toggleSeat(asiento)"
                         >
                             {{ asiento.label }}
@@ -200,7 +197,6 @@ const cinema = computed(() => catalog.cinemaById(cinemaId.value));
 
 // ── Seat state ──────────────────────────────────────────────────────────────────
 const selectedSeats = ref<string[]>([]); // asiento.id values
-const blockingInFlight = ref<Set<string>>(new Set()); // asiento.id being blocked
 const blockingError = ref("");
 
 const couponCode = ref("");
@@ -280,10 +276,6 @@ function isSelected(asiento: SeatItem) {
     return selectedSeats.value.includes(asiento.id);
 }
 
-function isBlocking(id: string) {
-    return blockingInFlight.value.has(id);
-}
-
 // ── Lifecycle ───────────────────────────────────────────────────────────────────
 onMounted(async () => {
     if (!session.user) {
@@ -318,11 +310,10 @@ onUnmounted(() => {
     if (timer) window.clearInterval(timer);
 });
 
-// ── Seat toggle with optimistic blocking ────────────────────────────────────────
-async function toggleSeat(asiento: SeatItem) {
-    if (isReserved(asiento) || isBlocking(asiento.id)) return;
+// ── Seat toggle (local only — block happens on purchase) ────────────────────────
+function toggleSeat(asiento: SeatItem) {
+    if (isReserved(asiento)) return;
 
-    // Deselect  — no unblock API available, just remove locally
     if (selectedSeats.value.includes(asiento.id)) {
         selectedSeats.value = selectedSeats.value.filter(
             (id) => id !== asiento.id,
@@ -333,29 +324,10 @@ async function toggleSeat(asiento: SeatItem) {
         return;
     }
 
-    // Optimistic select
-    blockingError.value = "";
     selectedSeats.value = [...selectedSeats.value, asiento.id];
-    blockingInFlight.value = new Set(blockingInFlight.value).add(asiento.id);
 
     if (selectedSeats.value.length === 1) {
         lockedUntil.value = Date.now() + 5 * 60 * 1000;
-    }
-
-    const result = await bloquearAsiento(showtimeId.value, asiento.id_asiento);
-    const inFlight = new Set(blockingInFlight.value);
-    inFlight.delete(asiento.id);
-    blockingInFlight.value = inFlight;
-
-    if (!result) {
-        // Block failed — revert
-        selectedSeats.value = selectedSeats.value.filter(
-            (id) => id !== asiento.id,
-        );
-        blockingError.value = `El asiento ${asiento.label} ya no está disponible.`;
-        if (selectedSeats.value.length === 0) {
-            lockedUntil.value = 0;
-        }
     }
 }
 
@@ -546,10 +518,6 @@ p {
     color: rgba(255, 255, 255, 0.3);
     cursor: not-allowed;
     border-color: rgba(200, 60, 60, 0.2);
-}
-.seat.blocked {
-    opacity: 0.5;
-    cursor: wait;
 }
 .legend {
     display: flex;
