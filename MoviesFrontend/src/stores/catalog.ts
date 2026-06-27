@@ -46,5 +46,14 @@ export const useCatalogStore = defineStore("catalog", () => {
     else rooms.value.unshift(next);
   }
 
-  return { movies, cinemas, rooms, showtimes, customers, cities, movieById, cinemaById, roomById, upsertShowtime, cancelShowtime, toggleMovieStatus, upsertCinema, upsertRoom };
+  function toggleCustomerStatus(id: string) {
+    const order: Customer["status"][] = ["activo", "inactivo", "suspendido"];
+    customers.value = customers.value.map((customer) => {
+      if (customer.id !== id) return customer;
+      const index = order.indexOf(customer.status);
+      return { ...customer, status: order[(index + 1) % order.length] };
+    });
+  }
+
+  return { movies, cinemas, rooms, showtimes, customers, cities, movieById, cinemaById, roomById, upsertShowtime, cancelShowtime, toggleMovieStatus, upsertCinema, upsertRoom, toggleCustomerStatus };
 });

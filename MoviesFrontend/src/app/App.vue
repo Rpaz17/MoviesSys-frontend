@@ -12,6 +12,8 @@ const session = useSessionStore();
 const open = ref(false);
 
 const adminLinks = [
+  { label: "Dashboard", to: "/admin" },
+  { label: "Vender", to: "/recepcion/vender" },
   { label: "Peliculas", to: "/admin/peliculas" },
   { label: "Funciones", to: "/admin/funciones" },
   { label: "Cines", to: "/admin/cines" },
@@ -24,6 +26,7 @@ const adminLinks = [
 ];
 
 const receptionLinks = [
+  { label: "Vender", to: "/recepcion/vender" },
   { label: "Caja", to: "/recepcion/reservas" },
   { label: "Funciones", to: "/reservas/funciones" },
 ];
@@ -96,6 +99,7 @@ function logout() {
                 <button class="dropdown-item" @click="go('/profile')"><User class="w-3.5 h-3.5" /> Mi perfil</button>
                 <button class="dropdown-item" @click="go('/change-password')"><Lock class="w-3.5 h-3.5" /> Cambiar contrasena</button>
                 <template v-if="session.isReceptionist">
+                  <button class="dropdown-item" @click="go('/recepcion/vender')"><Ticket class="w-3.5 h-3.5" /> Vender boletos</button>
                   <button class="dropdown-item" @click="go('/recepcion/reservas')"><Ticket class="w-3.5 h-3.5" /> Caja</button>
                 </template>
                 <template v-else-if="!session.isAdmin">
@@ -103,6 +107,7 @@ function logout() {
                   <button class="dropdown-item" @click="go('/profile/payments')"><Ticket class="w-3.5 h-3.5" /> Metodos de pago</button>
                 </template>
                 <template v-else>
+                  <button class="dropdown-item" @click="go('/recepcion/vender')"><Ticket class="w-3.5 h-3.5" /> Vender boletos</button>
                   <button class="dropdown-item" @click="go('/admin/reportes')"><Ticket class="w-3.5 h-3.5" /> Reportes</button>
                   <button class="dropdown-item" @click="go('/admin/funciones')"><CalendarClock class="w-3.5 h-3.5" /> Funciones</button>
                   <button class="dropdown-item" @click="go('/admin/cupones')"><Percent class="w-3.5 h-3.5" /> Cupones</button>

@@ -1,0 +1,114 @@
+<template>
+  <section class="page">
+    <div class="page-inner">
+      <div class="section-header">
+        <div>
+          <p class="eyebrow">Panel de administrador</p>
+          <h1>Editar función</h1>
+        </div>
+        <div class="header-actions">
+          <button class="ghost-button" type="button" @click="router.push('/admin')">
+            <LayoutDashboard class="w-3.5 h-3.5" /> Dashboard
+          </button>
+        </div>
+      </div>
+
+      <form class="card form-card" @submit.prevent="saveEditedShowtime">
+        <div class="form-grid">
+          <label class="field">Película<select v-model="showtimeForm.movieId" class="input" required><option v-for="movie in activeMovies" :key="movie.id" :value="movie.id">{{ movie.title }}</option></select></label>
+          <label class="field">Cine<select v-model="showtimeForm.cinemaId" class="input" required><option v-for="cinema in activeCinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option></select></label>
+          <label class="field">Sala<select v-model="showtimeForm.roomId" class="input" required><option v-for="room in filteredRooms" :key="room.id" :value="room.id">{{ room.name }} · {{ room.type }}</option></select></label>
+          <label class="field">Fecha<input v-model="showtimeForm.date" class="input" type="date" required /></label>
+          <label class="field">Hora<input v-model="showtimeForm.time" class="input" type="time" required /></label>
+          <label class="field">Formato<select v-model="showtimeForm.format" class="input"><option>2D</option><option>3D</option><option>IMAX</option><option>VIP</option></select></label>
+          <label class="field">Estado<select v-model="showtimeForm.editingStatus" class="input"><option value="activo">Activo</option><option value="mantenimiento">Mantenimiento</option><option value="inactivo">Inactivo</option></select></label>
+        </div>
+        <div class="form-actions">
+          <button class="ghost-button" type="button" @click="router.push('/admin/funciones')">Volver a funciones</button>
+          <button class="primary-button" type="submit">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { reactive, computed, watch, ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { LayoutDashboard } from "lucide-vue-next";
+import { useCatalogStore } from "../../stores/catalog";
+import type { Showtime, AdminStatus } from "../../types";
+
+const route = useRoute();
+const router = useRouter();
+const catalog = useCatalogStore();
+
+const id = String(route.params.id);
+const editingShowtimeId = ref(id);
+
+const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" | "status"> & { editingStatus?: AdminStatus }>({
+  movieId: "",
+  cinemaId: "",
+  roomId: "",
+  date: "",
+  time: "",
+  format: "2D",
+});
+
+const activeMovies = computed(() => catalog.movies.filter((item) => item.status !== "inactivo"));
+const activeCinemas = computed(() => catalog.cinemas.filter((item) => item.status === "activo"));
+const filteredRooms = computed(() => catalog.rooms.filter((room) => room.cinemaId === showtimeForm.cinemaId && room.status === "activo"));
+
+watch(() => showtimeForm.cinemaId, () => {
+  if (!filteredRooms.value.some((room) => room.id === showtimeForm.roomId)) showtimeForm.roomId = filteredRooms.value[0]?.id ?? "";
+});
+
+function loadEditShowtime() {
+  const showtime = catalog.showtimes.find((item) => item.id === id);
+  if (!showtime) return;
+  editingShowtimeId.value = showtime.id;
+  showtimeForm.movieId = showtime.movieId;
+  showtimeForm.cinemaId = showtime.cinemaId;
+  showtimeForm.roomId = showtime.roomId;
+  showtimeForm.date = showtime.date;
+  showtimeForm.time = showtime.time;
+  showtimeForm.format = showtime.format;
+  showtimeForm.editingStatus = showtime.status;
+}
+
+function saveEditedShowtime() {
+  const previous = catalog.showtimes.find((item) => item.id === editingShowtimeId.value);
+  catalog.upsertShowtime({
+    movieId: showtimeForm.movieId,
+    cinemaId: showtimeForm.cinemaId,
+    roomId: showtimeForm.roomId,
+    date: showtimeForm.date,
+    time: showtimeForm.time,
+    format: showtimeForm.format,
+    id: editingShowtimeId.value,
+    status: showtimeForm.editingStatus ?? "activo",
+    reservations: previous?.reservations ?? 0,
+    revenue: previous?.revenue ?? "$0",
+  });
+  router.push("/admin/funciones");
+}
+
+onMounted(() => {
+  loadEditShowtime();
+});
+</script>
+
+<style scoped>
+.section-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-end; margin-bottom: 20px; }
+.eyebrow { color: #c8a96e; font-family: "DM Mono", monospace; text-transform: uppercase; font-size: 11px; letter-spacing: .09em; margin: 0 0 4px; }
+h1 { font-size: clamp(20px, 2.5vw, 30px); font-weight: 600; color: #f0ece4; margin: 0; font-family: 'Playfair Display', serif; letter-spacing: -0.01em; }
+.header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.form-card { padding: 1.5rem; display: grid; gap: 1.125rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.field { display: grid; gap: 6px; color: #c8a96e; font-size: .8125rem; font-weight: 500; }
+.form-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+@media (max-width: 900px) {
+  .section-header, .form-actions { align-items: stretch; flex-direction: column; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
