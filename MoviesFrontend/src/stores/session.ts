@@ -99,19 +99,12 @@ export const useSessionStore = defineStore("session", () => {
         phone: "",
         notifications: true,
       };
-<<<<<<< Updated upstream
-      authService
-        .getMe()
-        .then(applyUserProfile)
-        .catch(() => {});
-=======
       try {
         const profile = await authService.getMe();
         applyUserProfile(profile);
       } catch {
         // keep token-based user as fallback
       }
->>>>>>> Stashed changes
     } catch {
       localStorage.removeItem("access_token");
     }
@@ -125,19 +118,12 @@ export const useSessionStore = defineStore("session", () => {
       localStorage.setItem("access_token", res.access_token);
       const decoded = decodeToken(res.access_token);
       setUserFromToken(res.access_token, email);
-<<<<<<< Updated upstream
-      authService
-        .getMe()
-        .then(applyUserProfile)
-        .catch(() => {});
-=======
       try {
         const profile = await authService.getMe();
         applyUserProfile(profile);
       } catch {
         // keep token-based user as fallback
       }
->>>>>>> Stashed changes
       return true;
     } catch {
       return false;
