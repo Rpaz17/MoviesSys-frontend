@@ -40,8 +40,9 @@
                             :class="{
                                 reserved: isReserved(asiento),
                                 selected: isSelected(asiento),
+                                'own-blocked': isOwnBlocked(asiento),
+                                'blocked-other': isBlockedByOther(asiento),
                             }"
-                            :disabled="isReserved(asiento)"
                             @click="toggleSeat(asiento)"
                         >
                             {{ asiento.label }}
@@ -53,7 +54,7 @@
                     <span
                         ><i class="seat-dot selected-dot"></i>Seleccionado</span
                     >
-                    <span><i class="seat-dot reserved-dot"></i>Reservado</span>
+                    <span><i class="seat-dot reserved-dot"></i>No disponible</span>
                     <span v-if="blockingError" class="error-msg">{{
                         blockingError
                     }}</span>
@@ -136,7 +137,7 @@
                 >
                     {{
                         isConfirming
-                            ? "Bloqueando asientos..."
+                            ? "Procesando pago..."
                             : "Confirmar y pagar"
                     }}
                 </button>
@@ -171,6 +172,8 @@ interface SeatItem {
     fila: number;
     columna: number;
     estado: string;
+    id_usuario: string | number | null;
+    bloqueado_hasta: string | null;
 }
 
 const route = useRoute();
@@ -180,7 +183,7 @@ const reservationsStore = useReservationsStore();
 const session = useSessionStore();
 const { reservations, coupons } = storeToRefs(reservationsStore);
 const { money, formatDate } = useFormat();
-const { asientos, fetchAsientos, bloquearAsiento, isPending } = useFunciones();
+const { asientos, fetchAsientos, bloquearAsiento, liberarAsiento, isPending } = useFunciones();
 
 // ── Route context ──────────────────────────────────────────────────────────────
 const showtimeId = computed(() => String(route.params.showtimeId));
@@ -217,6 +220,7 @@ const isConfirming = ref(false);
 const lockedUntil = ref(0);
 const now = ref(Date.now());
 let timer: number | undefined;
+let refreshTimer: number | undefined;
 
 // ── Derived data ────────────────────────────────────────────────────────────────
 const unitPrice = ref(7);
@@ -251,7 +255,9 @@ const seatList = computed<SeatItem[]>(() =>
             label: `${String.fromCharCode(64 + a.fila!)}${a.columna!}`,
             fila: a.fila!,
             columna: a.columna!,
-            estado: a.estado ?? "disponible",
+            estado: normalizeEstado(a.estado ?? "disponible"),
+            id_usuario: a.id_usuario ?? null,
+            bloqueado_hasta: a.bloqueado_hasta ?? null,
         }))
         .sort((a, b) => a.fila - b.fila || a.columna - b.columna),
 );
@@ -270,9 +276,36 @@ const lockCountdown = computed(() => {
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
+const currentUserId = computed(() => session.user?.id ?? "");
+
+function normalizeEstado(estado: string): string {
+    const e = estado.toLowerCase();
+    if (e === "blocked" || e === "bloqueado") return "bloqueado";
+    if (e === "reserved" || e === "reservado" || e === "occupied" || e === "ocupado") return "reservado";
+    if (e === "available" || e === "disponible") return "disponible";
+    return estado;
+}
+
 function isReserved(asiento: SeatItem) {
     return (
         asiento.estado !== "disponible" &&
+        asiento.estado !== "bloqueado" &&
+        !selectedSeats.value.includes(asiento.id)
+    );
+}
+
+function isOwnBlocked(asiento: SeatItem) {
+    return (
+        asiento.estado === "bloqueado" &&
+        String(asiento.id_usuario) === currentUserId.value &&
+        !selectedSeats.value.includes(asiento.id)
+    );
+}
+
+function isBlockedByOther(asiento: SeatItem) {
+    return (
+        asiento.estado === "bloqueado" &&
+        String(asiento.id_usuario) !== currentUserId.value &&
         !selectedSeats.value.includes(asiento.id)
     );
 }
@@ -309,16 +342,19 @@ onMounted(async () => {
             router.push("/reservas/funciones");
         }
     }, 1000);
+
+    refreshTimer = window.setInterval(async () => {
+        await fetchAsientos(showtimeId.value);
+    }, 30000);
 });
 
 onUnmounted(() => {
     if (timer) window.clearInterval(timer);
+    if (refreshTimer) window.clearInterval(refreshTimer);
 });
 
-// ── Seat toggle (local only — block happens on purchase) ────────────────────────
-function toggleSeat(asiento: SeatItem) {
-    if (isReserved(asiento)) return;
-
+// ── Seat toggle (blocks via API on select, liberates on deselect) ──────────────
+async function toggleSeat(asiento: SeatItem) {
     if (selectedSeats.value.includes(asiento.id)) {
         selectedSeats.value = selectedSeats.value.filter(
             (id) => id !== asiento.id,
@@ -326,10 +362,31 @@ function toggleSeat(asiento: SeatItem) {
         if (selectedSeats.value.length === 0) {
             lockedUntil.value = 0;
         }
+        blockingError.value = "";
+        liberarAsiento(showtimeId.value, asiento.id_asiento);
         return;
     }
 
+    const blocked = await bloquearAsiento(showtimeId.value, asiento.id_asiento);
+    console.log("toggleSeat bloqueo:", { label: asiento.label, id_asiento: asiento.id_asiento, result: blocked });
+    if (!blocked) {
+        blockingError.value = `El asiento ${asiento.label} ya no esta disponible.`;
+        const idx = asientos.value.findIndex((a) => a.id === asiento.id);
+        if (idx >= 0) {
+            asientos.value[idx] = { ...asientos.value[idx], estado: "reservado" };
+        }
+        return;
+    }
+
+    blockingError.value = "";
     selectedSeats.value = [...selectedSeats.value, asiento.id];
+
+    if (asiento.estado !== "disponible") {
+        const idx = asientos.value.findIndex((a) => a.id === asiento.id);
+        if (idx >= 0) {
+            asientos.value[idx] = { ...asientos.value[idx], estado: "disponible" };
+        }
+    }
 
     if (selectedSeats.value.length === 1) {
         lockedUntil.value = Date.now() + 5 * 60 * 1000;
@@ -419,20 +476,10 @@ async function confirmReservation() {
         return;
     }
 
-    // 5. Block every selected seat on the server
-
-    for (const seat of selectedItems) {
-        const result = await bloquearAsiento(showtimeId.value, seat.id_asiento);
-        if (!result) {
-            confirmationError.value = `Error al bloquear el asiento ${seat.label}. Intenta de nuevo.`;
-            isConfirming.value = false;
-            return;
-        }
-    }
-
-    // 6. Save locally and navigate
+    // 5. Save locally and navigate
     const reservation: Reservation = {
         id: String(reservaCreada.id),
+      apiId: Number(reservaCreada.id),
         customerName: session.user.name,
         customerEmail: session.user.email,
         movieId: movieId.value,
@@ -582,6 +629,16 @@ p {
     cursor: not-allowed;
     border-color: rgba(200, 60, 60, 0.2);
 }
+.seat.own-blocked {
+    background: rgba(200, 169, 110, 0.15);
+    color: #c8a96e;
+    border-color: rgba(200, 169, 110, 0.3);
+}
+.seat.blocked-other {
+    background: rgba(200, 60, 60, 0.18);
+    color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(200, 60, 60, 0.2);
+}
 .legend {
     display: flex;
     gap: 14px;
@@ -598,6 +655,10 @@ p {
     margin-right: 5px;
     vertical-align: -1px;
     border: 1px solid rgba(200, 169, 110, 0.2);
+}
+.own-dot {
+    background: rgba(200, 169, 110, 0.3);
+    border-color: rgba(200, 169, 110, 0.5);
 }
 .selected-dot {
     background: #c8a96e;

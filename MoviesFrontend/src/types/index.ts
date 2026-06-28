@@ -129,6 +129,7 @@ export interface Coupon {
 
 export interface Reservation {
   id:            string;
+  apiId?:        number;
   customerName:  string;
   customerEmail: string;
   movieId:       string;

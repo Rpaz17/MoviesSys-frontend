@@ -45,18 +45,40 @@
           <input v-model="sellCustomerName" class="input" placeholder="Nombre completo" />
         </label>
 
-        <div class="pos-cash-row">
-          <label class="field" style="flex:1">
-            Efectivo recibido
-            <input v-model.number="cashReceived" class="input" type="number" min="0" step="0.01" placeholder="0.00" />
-          </label>
-          <div class="pos-change" v-if="cashReceived >= sellTotal">
-            <span class="mono muted" style="font-size:.6875rem;text-transform:uppercase">Cambio</span>
-            <strong>{{ money(cashReceived - sellTotal) }}</strong>
-          </div>
-        </div>
+        <label class="field">
+          Metodo de pago
+          <select v-model="paymentMethod" class="input">
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+          </select>
+        </label>
 
-        <button class="primary-button full" type="button" :disabled="!canSell" @click="confirmSell">Cobrar y emitir boleto</button>
+        <template v-if="paymentMethod === 'tarjeta'">
+          <div class="payment-grid">
+            <input v-model="cardNumber" class="input" placeholder="Numero de tarjeta" />
+            <input v-model="cardExpiry" class="input" placeholder="MM/AA" />
+            <input v-model="cardCvv" class="input" placeholder="CVV" />
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="pos-cash-row">
+            <label class="field" style="flex:1">
+              Efectivo recibido
+              <input v-model.number="cashReceived" class="input" type="number" min="0" step="0.01" placeholder="0.00" />
+            </label>
+            <div class="pos-change" v-if="cashReceived >= sellTotal">
+              <span class="mono muted" style="font-size:.6875rem;text-transform:uppercase">Cambio</span>
+              <strong>{{ money(cashReceived - sellTotal) }}</strong>
+            </div>
+          </div>
+        </template>
+
+        <p v-if="sellError" class="error-msg">{{ sellError }}</p>
+
+        <button class="primary-button full" type="button" :disabled="!canSell || isConfirming" @click="confirmSell">
+          {{ isConfirming ? 'Procesando...' : 'Cobrar y emitir boleto' }}
+        </button>
         <button class="ghost-button full" type="button" @click="router.push('/recepcion/vender')">Cancelar venta</button>
       </aside>
     </div>
@@ -67,7 +89,8 @@
       v-if="sellReceipt"
       :receipt="sellReceipt"
       :showtime="sellShowtime"
-      :cashReceived="cashReceived"
+      :cash-received="paymentMethod === 'efectivo' ? cashReceived : 0"
+      :payment-method="paymentMethod"
       @close="closeSellReceipt"
     />
   </section>
@@ -79,8 +102,11 @@ import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useCatalogStore } from "../../stores/catalog";
 import { useReservationsStore } from "../../stores/reservations";
+import { useSessionStore } from "../../stores/session";
 import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
+import { reservasService } from "../../services/reservas.service";
+import { funcionesService } from "../../services/funciones.service";
 import SellReceiptModal from "../../components/SellReceiptModal.vue";
 import type { Reservation, Showtime } from "../../types";
 
@@ -88,6 +114,7 @@ const route = useRoute();
 const router = useRouter();
 const catalog = useCatalogStore();
 const reservationsStore = useReservationsStore();
+const session = useSessionStore();
 const { reservations } = storeToRefs(reservationsStore);
 const { movieFor, cinemaFor, roomFor, priceFor } = useCatalogHelpers();
 const { money } = useFormat();
@@ -102,6 +129,12 @@ const sellSeats = ref<string[]>([]);
 const sellCustomerName = ref("");
 const cashReceived = ref(0);
 const sellReceipt = ref<Reservation | null>(null);
+const paymentMethod = ref<"efectivo" | "tarjeta">("efectivo");
+const cardNumber = ref("");
+const cardExpiry = ref("");
+const cardCvv = ref("");
+const isConfirming = ref(false);
+const sellError = ref("");
 
 const sellMovie = computed(() => (sellShowtime.value ? movieFor(sellShowtime.value.movieId) : undefined));
 const sellCinema = computed(() => (sellShowtime.value ? cinemaFor(sellShowtime.value.cinemaId) : undefined));
@@ -127,9 +160,11 @@ const sellTotal = computed(() =>
   sellSeats.value.length * (sellShowtime.value ? priceFor(sellShowtime.value.format) : 0)
 );
 
-const canSell = computed(
-  () => sellSeats.value.length > 0 && sellCustomerName.value.trim().length > 0 && cashReceived.value >= sellTotal.value
-);
+const canSell = computed(() => {
+  if (sellSeats.value.length === 0 || sellCustomerName.value.trim().length === 0) return false;
+  if (paymentMethod.value === "efectivo") return cashReceived.value >= sellTotal.value;
+  return !!(cardNumber.value && cardExpiry.value && cardCvv.value);
+});
 
 function toggleSellSeat(seat: string) {
   sellSeats.value = sellSeats.value.includes(seat)
@@ -137,28 +172,76 @@ function toggleSellSeat(seat: string) {
     : [...sellSeats.value, seat];
 }
 
-function confirmSell() {
+function extractUserIdFromToken(): number {
+  const token = localStorage.getItem("access_token");
+  if (!token) return 0;
+  try {
+    const decoded = JSON.parse(atob(token.split(".")[1]));
+    return Number(decoded.userId || decoded.sub || decoded.id || decoded.user_id || 0);
+  } catch {
+    return 0;
+  }
+}
+
+async function confirmSell() {
   if (!sellShowtime.value || !canSell.value) return;
-  const reservation: Reservation = {
-    id: `R${Date.now().toString().slice(-6)}`,
-    customerName: sellCustomerName.value.trim(),
-    customerEmail: "venta-en-taquilla@cine.com",
-    movieId: sellShowtime.value.movieId,
-    showtimeId: sellShowtime.value.id,
-    cinemaId: sellShowtime.value.cinemaId,
-    roomId: sellShowtime.value.roomId,
-    date: sellShowtime.value.date,
-    time: sellShowtime.value.time,
-    seats: [...sellSeats.value],
-    status: "confirmada",
-    paymentStatus: "pagado",
-    paymentMethod: "efectivo",
-    transactionId: `TX-EF-${Date.now()}`,
-    total: sellTotal.value,
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-  reservationsStore.addReservation(reservation);
-  sellReceipt.value = reservation;
+  isConfirming.value = true;
+  sellError.value = "";
+
+  const userId = extractUserIdFromToken();
+  if (!userId) {
+    sellError.value = "Error de sesion. Vuelve a iniciar sesion.";
+    isConfirming.value = false;
+    return;
+  }
+
+  try {
+    const reservaCreada = await reservasService.create({
+      id_usuario: userId,
+      id_funcion: Number(showtimeId.value),
+      asientosIds: [],
+    });
+
+    const precioPorAsiento = sellShowtime.value ? priceFor(sellShowtime.value.format) : sellTotal.value / sellSeats.value.length;
+
+    if (paymentMethod.value === "efectivo") {
+      await reservasService.processCashPayment({
+        id_reserva: Number(reservaCreada.id),
+        precio_por_asiento: precioPorAsiento,
+      });
+    } else {
+      await reservasService.processPayment({
+        id_reserva: Number(reservaCreada.id),
+        metodo: "tarjeta",
+        precio_por_asiento: precioPorAsiento,
+      });
+    }
+
+    const reservation: Reservation = {
+      id: String(reservaCreada.id),
+      apiId: Number(reservaCreada.id),
+      customerName: sellCustomerName.value.trim(),
+      customerEmail: "venta-en-taquilla@cine.com",
+      movieId: sellShowtime.value.movieId,
+      showtimeId: sellShowtime.value.id,
+      cinemaId: sellShowtime.value.cinemaId,
+      roomId: sellShowtime.value.roomId,
+      date: sellShowtime.value.date,
+      time: sellShowtime.value.time,
+      seats: [...sellSeats.value],
+      status: "confirmada",
+      paymentStatus: "pagado",
+      paymentMethod: paymentMethod.value,
+      transactionId: `TX-${Date.now()}`,
+      total: sellTotal.value,
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    reservationsStore.addReservation(reservation);
+    sellReceipt.value = reservation;
+  } catch {
+    sellError.value = "Error al procesar la venta. Intenta de nuevo.";
+  }
+  isConfirming.value = false;
 }
 
 function closeSellReceipt() {
@@ -166,6 +249,10 @@ function closeSellReceipt() {
   sellSeats.value = [];
   sellCustomerName.value = "";
   cashReceived.value = 0;
+  cardNumber.value = "";
+  cardExpiry.value = "";
+  cardCvv.value = "";
+  paymentMethod.value = "efectivo";
   router.push("/recepcion/vender");
 }
 </script>
@@ -202,6 +289,8 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .pos-cash-row { display: flex; gap: 12px; align-items: end; }
 .pos-change { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; border: 1px solid rgba(76,175,125,0.25); border-radius: 3px; padding: .5rem .75rem; background: rgba(76,175,125,0.05); }
 .pos-change strong { font-size: 1.125rem; color: #4caf7d; }
+.payment-grid { display: grid; gap: 8px; }
+.error-msg { color: #e8607a; font-size: .75rem; margin: 0; }
 .empty-state { padding: 3rem 1.5rem; text-align: center; color: #7a7590; font-size: .875rem; }
 @media (max-width: 900px) {
   .booking-grid { grid-template-columns: 1fr; }

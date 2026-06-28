@@ -32,6 +32,8 @@ export const asientoSchema = z.object({
   estado: z.string().optional(),
   id_asiento: z.union([z.string(), z.number()]).optional(),
   id_funcion: z.union([z.string(), z.number()]).optional(),
+  id_usuario: z.union([z.string(), z.number()]).nullable().optional(),
+  bloqueado_hasta: z.string().nullable().optional(),
 });
 export type Asiento = z.infer<typeof asientoSchema>;
 
@@ -76,7 +78,6 @@ export const funcionesService = {
 
   async getAsientos(funcionId: number | string): Promise<Asiento[]> {
     const { data } = await apiClient.get(`/funciones/${funcionId}/asientos`);
-    // API returns an object like { "A": [...seats], "B": [...seats] }
     if (typeof data === "object" && !Array.isArray(data) && data !== null) {
       const result: Asiento[] = [];
       for (const [rowKey, seats] of Object.entries(data)) {
@@ -90,6 +91,8 @@ export const funcionesService = {
             estado: seat.estado ?? "disponible",
             id_asiento: String(seat.id_asiento ?? seat.id ?? ""),
             id_funcion: String(seat.id_funcion ?? funcionId),
+            id_usuario: seat.id_usuario ?? null,
+            bloqueado_hasta: seat.bloqueado_hasta ?? null,
           });
         });
       }
@@ -109,6 +112,20 @@ export const funcionesService = {
     const parsed = bloqueoResponseSchema.safeParse(data);
     if (parsed.success) return parsed.data;
     return true; // 2xx but unexpected shape — still a success
+  },
+
+  async liberarAsiento(funcionId: number | string, idAsiento: string): Promise<boolean> {
+    try {
+      await apiClient.post(`/funciones/${funcionId}/asientos/liberar`, { id_asiento: idAsiento });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async getMisBloqueos(funcionId: number | string): Promise<Asiento[]> {
+    const { data } = await apiClient.get(`/funciones/${funcionId}/asientos/mis-bloqueos`);
+    return z.array(asientoSchema).parse(data);
   },
 
   async create(payload: CreateFuncionInput): Promise<{ id: number | string }> {

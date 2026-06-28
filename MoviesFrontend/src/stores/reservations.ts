@@ -21,6 +21,7 @@ export const useReservationsStore = defineStore("reservations", () => {
         const dt = r.funcion?.fecha_hora ? new Date(r.funcion.fecha_hora) : null;
         return {
           id: r.numero_reserva || String(r.id),
+          apiId: Number(r.id),
           customerName: r.usuario?.nombre ?? "",
           customerEmail: r.usuario?.email ?? "",
           movieId: String(movie?.id ?? ""),
@@ -67,14 +68,28 @@ export const useReservationsStore = defineStore("reservations", () => {
     } : reservation);
   }
 
-  function payReservation(id: string, method: "tarjeta" | "efectivo" = "efectivo") {
-    reservations.value = reservations.value.map((reservation) => reservation.id === id ? {
-      ...reservation,
-      status: "confirmada" as const,
-      paymentStatus: "pagado" as const,
-      paymentMethod: method,
-      transactionId: reservation.transactionId ?? `TX-${Date.now()}`,
-    } : reservation);
+  async function payReservation(id: string, method: "tarjeta" | "efectivo", precioPorAsiento: number): Promise<boolean> {
+    const reservation = reservations.value.find((r) => r.id === id);
+    if (!reservation) return false;
+    const reservationId = reservation.apiId ?? Number(id);
+    if (!reservationId || Number.isNaN(reservationId)) return false;
+    try {
+      if (method === "efectivo") {
+        await reservasService.processCashPayment({ id_reserva: reservationId, precio_por_asiento: precioPorAsiento });
+      } else {
+        await reservasService.processPayment({ id_reserva: reservationId, metodo: method, precio_por_asiento: precioPorAsiento });
+      }
+      reservations.value = reservations.value.map((r) => r.id === id ? {
+        ...r,
+        status: "confirmada" as const,
+        paymentStatus: "pagado" as const,
+        paymentMethod: method,
+        transactionId: r.transactionId ?? `TX-${Date.now()}`,
+      } : r);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   function addCoupon(coupon: Coupon) {
