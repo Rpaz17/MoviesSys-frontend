@@ -130,4 +130,9 @@ export const authService = {
     const { data } = await apiClient.get<UserListItem[]>("/users", { params });
     return z.array(userListItemSchema).parse(data);
   },
+
+  async updateUserStatus(id: string, estado: string): Promise<UserListItem> {
+    const { data } = await apiClient.put(`/users/${id}`, { estado });
+    return userListItemSchema.parse(data);
+  },
 };

@@ -226,13 +226,21 @@ export const useCatalogStore = defineStore("catalog", () => {
     else rooms.value.unshift(next);
   }
 
-  function toggleCustomerStatus(id: string) {
-    const order: Customer["status"][] = ["activo", "inactivo", "suspendido"];
-    customers.value = customers.value.map((customer) => {
-      if (customer.id !== id) return customer;
-      const index = order.indexOf(customer.status);
-      return { ...customer, status: order[(index + 1) % order.length] };
-    });
+  async function toggleCustomerStatus(id: string) {
+    const current = customers.value.find((c) => c.id === id);
+    if (!current || current.status === "suspendido") return;
+
+    const apiStatus = current.status === "activo" ? "inactive" : "active";
+    const nextStatus = current.status === "activo" ? "inactivo" : "activo";
+
+    try {
+      await authService.updateUserStatus(id, apiStatus);
+      customers.value = customers.value.map((c) =>
+        c.id === id ? { ...c, status: nextStatus } : c,
+      );
+    } catch {
+      // revert silently
+    }
   }
 
   async function loadCustomers(params?: { nombre?: string; email?: string; estado?: string }): Promise<void> {

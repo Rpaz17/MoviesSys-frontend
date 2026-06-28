@@ -43,7 +43,10 @@
               </td>
               <td>{{ customer.email }}</td>
               <td>
-                <span class="pill" :class="'status-' + customer.status">{{ customer.status }}</span>
+                <template v-if="customer.status === 'suspendido'">
+                  <span class="pill" :class="'status-' + customer.status">{{ customer.status }}</span>
+                </template>
+                <button v-else class="pill" :class="'status-' + customer.status" @click="catalog.toggleCustomerStatus(customer.id)">{{ customer.status }}</button>
               </td>
               <td>{{ customer.registeredAt ? formatDate(customer.registeredAt) : '-' }}</td>
             </tr>
@@ -170,6 +173,10 @@ td small {
   text-align: center;
   color: #7a7590;
   font-size: 0.875rem;
+}
+td button.pill {
+  cursor: pointer;
+  font: inherit;
 }
 .pill.status-activo {
   background: rgba(76, 175, 125, 0.1);
