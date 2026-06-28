@@ -3,6 +3,7 @@ import { ref } from "vue";
 import { peliculasService } from "../services/peliculas.service";
 import type { CatalogMovie, Cinema, Customer, Room, Showtime } from "../types";
 import { ciudadesService } from "../services/ciudades.services";
+import { cinesService } from "../services/cines.service";
 
 export const useCatalogStore = defineStore("catalog", () => {
   const movies = ref<CatalogMovie[]>([]);
@@ -38,15 +39,14 @@ export const useCatalogStore = defineStore("catalog", () => {
           .catch(
             () => [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>,
           ),
-        peliculasService
-          .getCines()
-          .catch(
-            () => [] as Awaited<ReturnType<typeof peliculasService.getCines>>,
-          ),
-        ciudadesService
+        cinesService
           .getAll()
+          .catch(() => [] as Awaited<ReturnType<typeof cinesService.getAll>>),
+        peliculasService
+          .getCiudades()
           .catch(
-            () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
+            () =>
+              [] as Awaited<ReturnType<typeof peliculasService.getCiudades>>,
           ),
       ]);
 
@@ -76,7 +76,8 @@ export const useCatalogStore = defineStore("catalog", () => {
         name: c.nombre,
         address: c.direccion ?? "",
         city: ciudadNames.value.get(String(c.id_ciudad)) ?? "Desconocido",
-        status: "activo" as const,
+        status:
+          c.activo !== false ? ("activo" as const) : ("inactivo" as const),
         rooms: 0,
         functions: 0,
         revenue: "$0",
@@ -284,6 +285,30 @@ export const useCatalogStore = defineStore("catalog", () => {
 
   async function reactivateCity(id: string): Promise<void> {
     await ciudadesService.reactivarCiudad(id);
+  async function createCine(payload: {
+    nombre: string;
+    direccion?: string;
+    id_ciudad: number;
+  }): Promise<void> {
+    await cinesService.create(payload);
+    await loadFromAPI();
+  }
+
+  async function updateCine(
+    id: string,
+    payload: { nombre?: string; direccion?: string; id_ciudad?: number },
+  ): Promise<void> {
+    await cinesService.update(id, payload);
+    await loadFromAPI();
+  }
+
+  async function deleteCine(id: string): Promise<void> {
+    await cinesService.delete(id);
+    await loadFromAPI();
+  }
+
+  async function reactivateCine(id: string): Promise<void> {
+    await cinesService.reactivar(id);
     await loadFromAPI();
   }
 
@@ -310,5 +335,9 @@ export const useCatalogStore = defineStore("catalog", () => {
     updateCity,
     deleteCity,
     reactivateCity,
-  };
+    updateCine,
+    createCine,
+    deleteCine,
+    reactivateCine,
+  }
 });

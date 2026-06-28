@@ -59,14 +59,11 @@ export const uploadPosterInputSchema = z.object({
 });
 export type UploadPosterInput = z.infer<typeof uploadPosterInputSchema>;
 
-export const cineSchema = z.object({
+export const ciudadSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
-  direccion: z.string().optional().default(""),
-  id_ciudad: z.union([z.string(), z.number()]).optional(),
-  created_at: z.string().optional(),
 });
-export type Cine = z.infer<typeof cineSchema>;
+export type Ciudad = z.infer<typeof ciudadSchema>;
 
 const cineEnFuncionSchema = z.object({
   id: z.union([z.string(), z.number()]),
