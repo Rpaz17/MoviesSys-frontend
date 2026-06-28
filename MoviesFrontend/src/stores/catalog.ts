@@ -80,7 +80,7 @@ export const useCatalogStore = defineStore("catalog", () => {
           c.activo !== false ? ("activo" as const) : ("inactivo" as const),
         rooms: 0,
         functions: 0,
-        revenue: "$0",
+        revenue: "No disponible",
         img: "",
       }));
 
@@ -215,7 +215,9 @@ export const useCatalogStore = defineStore("catalog", () => {
           date,
           time,
           format: "2D",
-          status: f.estado === "active" ? "activo" : "inactivo",
+          status: ["active", "activo"].includes(f.estado.toLowerCase())
+            ? "activo"
+            : "inactivo",
           reservations: f._count?.asientosFuncions ?? 0,
           revenue: "$0",
         });
@@ -227,6 +229,22 @@ export const useCatalogStore = defineStore("catalog", () => {
     }
 
     showtimes.value = allFunciones;
+
+    cinemas.value = cinemas.value.map((cinema) => {
+      const cinemaShowtimes = allFunciones.filter(
+        (showtime) => showtime.cinemaId === cinema.id,
+      );
+      const cinemaRoomIds = new Set(
+        cinemaShowtimes.map((showtime) => showtime.roomId),
+      );
+
+      return {
+        ...cinema,
+        rooms: cinemaRoomIds.size,
+        functions: cinemaShowtimes.length,
+        revenue: "No disponible",
+      };
+    });
   }
 
   function upsertShowtime(next: Showtime) {
@@ -329,6 +347,7 @@ export const useCatalogStore = defineStore("catalog", () => {
   }): Promise<void> {
     await cinesService.create(payload);
     await loadFromAPI();
+    await loadAllShowtimes();
   }
 
   async function updateCine(
@@ -337,16 +356,19 @@ export const useCatalogStore = defineStore("catalog", () => {
   ): Promise<void> {
     await cinesService.update(id, payload);
     await loadFromAPI();
+    await loadAllShowtimes();
   }
 
   async function deleteCine(id: string): Promise<void> {
     await cinesService.delete(id);
     await loadFromAPI();
+    await loadAllShowtimes();
   }
 
   async function reactivateCine(id: string): Promise<void> {
     await cinesService.reactivar(id);
     await loadFromAPI();
+    await loadAllShowtimes();
   }
 
   return {
