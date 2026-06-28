@@ -10,7 +10,9 @@
           <button class="ghost-button" type="button" @click="router.push('/admin')">
             <LayoutDashboard class="w-3.5 h-3.5" /> Dashboard
           </button>
-          <button class="ghost-button" type="button" @click="exportCsv" :disabled="loading">Exportar CSV</button>
+          <button class="ghost-button" type="button" @click="exportCsv" :disabled="loading || exporting">
+            {{ exporting ? "Exportando..." : "Exportar CSV" }}
+          </button>
         </div>
       </div>
 
@@ -72,7 +74,7 @@
               <td>{{ reservation.numero_reserva }}</td>
               <td>{{ reservation.usuario.nombre }}<small>{{ reservation.usuario.email }}</small></td>
               <td>{{ reservation.funcion.pelicula.titulo }}<small>{{ formatDate(reservation.funcion.fecha_hora)
-                  }}</small></td>
+              }}</small></td>
               <td>{{ reservation.funcion.sala.cine.nombre }}<small>{{ reservation.funcion.sala.nombre }}</small></td>
               <td>{{ reservation.total_asientos }}</td>
               <td>{{ reservation.estado }}</td>
@@ -106,6 +108,7 @@ const router = useRouter();
 const catalog = useCatalogStore();
 const loading = ref(false);
 const errorMessage = ref("");
+const exporting = ref(false);
 const reservations = ref<ReporteReserva[]>([]);
 const pagina = ref(1);
 const totalPaginas = ref(1);
@@ -171,25 +174,106 @@ onMounted(async () => {
   loadReport(1);
 });
 
-function exportCsv() {
-  const rows = [["reserva", "cliente", "correo", "pelicula", "cine", "fecha", "asientos", "estado"]];
-  reservations.value.forEach((r) => rows.push([
-    r.numero_reserva,
-    r.usuario.nombre,
-    r.usuario.email,
-    r.funcion.pelicula.titulo,
-    r.funcion.sala.cine.nombre,
-    formatDate(r.funcion.fecha_hora),
-    String(r.total_asientos),
-    r.estado,
-  ]));
-  const blob = new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "reporte-reservas.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+function escapeCsv(value: string | number): string {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function formatReservationStatus(status: string): string {
+  const statuses: Record<string, string> = {
+    pendiente: "Pendiente",
+    pagada: "Pagada",
+    cancelada: "Cancelada",
+  };
+
+  return statuses[status.toLowerCase()] ?? status;
+}
+
+async function getAllFilteredReservations(): Promise<ReporteReserva[]> {
+  const firstPage = await reportesService.getReservas({
+    ...filters,
+    pagina: 1,
+    limite: 100,
+  });
+
+  const allReservations = [...firstPage.data];
+
+  for (let page = 2; page <= firstPage.total_paginas; page++) {
+    const response = await reportesService.getReservas({
+      ...filters,
+      pagina: page,
+      limite: 100,
+    });
+
+    allReservations.push(...response.data);
+  }
+
+  return allReservations;
+}
+
+async function exportCsv() {
+  exporting.value = true;
+  errorMessage.value = "";
+
+  try {
+    const reportData = await getAllFilteredReservations();
+
+    if (reportData.length === 0) {
+      errorMessage.value =
+        "No existen reservas para exportar con estos filtros.";
+      return;
+    }
+
+    const headers = [
+      "N.º Reserva",
+      "Cliente",
+      "Correo electrónico",
+      "Película",
+      "Cine",
+      "Sala",
+      "Fecha de función",
+      "Cantidad de asientos",
+      "Estado",
+    ];
+
+    const rows = reportData.map((reservation) => [
+      reservation.numero_reserva,
+      reservation.usuario.nombre,
+      reservation.usuario.email,
+      reservation.funcion.pelicula.titulo,
+      reservation.funcion.sala.cine.nombre,
+      reservation.funcion.sala.nombre,
+      formatDate(reservation.funcion.fecha_hora),
+      reservation.total_asientos,
+      formatReservationStatus(reservation.estado),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(","))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF", csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download = `reporte-reservas-${date}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Error exportando reporte:", error);
+    errorMessage.value = "No se pudo exportar el reporte CSV.";
+  } finally {
+    exporting.value = false;
+  }
 }
 </script>
 
