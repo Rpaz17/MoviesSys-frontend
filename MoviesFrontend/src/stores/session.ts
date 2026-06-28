@@ -99,10 +99,19 @@ export const useSessionStore = defineStore("session", () => {
         phone: "",
         notifications: true,
       };
+<<<<<<< Updated upstream
       authService
         .getMe()
         .then(applyUserProfile)
         .catch(() => {});
+=======
+      try {
+        const profile = await authService.getMe();
+        applyUserProfile(profile);
+      } catch {
+        // keep token-based user as fallback
+      }
+>>>>>>> Stashed changes
     } catch {
       localStorage.removeItem("access_token");
     }
@@ -115,12 +124,20 @@ export const useSessionStore = defineStore("session", () => {
       const res = await authService.login({ email, password });
       localStorage.setItem("access_token", res.access_token);
       const decoded = decodeToken(res.access_token);
-      console.log("JWT payload:", decoded);
       setUserFromToken(res.access_token, email);
+<<<<<<< Updated upstream
       authService
         .getMe()
         .then(applyUserProfile)
         .catch(() => {});
+=======
+      try {
+        const profile = await authService.getMe();
+        applyUserProfile(profile);
+      } catch {
+        // keep token-based user as fallback
+      }
+>>>>>>> Stashed changes
       return true;
     } catch {
       return false;
@@ -151,6 +168,12 @@ export const useSessionStore = defineStore("session", () => {
         phone: "",
         notifications: true,
       };
+      try {
+        const profile = await authService.getMe();
+        applyUserProfile(profile);
+      } catch {
+        // keep token-based user as fallback
+      }
       return true;
     } catch {
       return false;
