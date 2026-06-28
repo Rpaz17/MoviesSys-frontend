@@ -42,17 +42,76 @@
       </div>
     </div>
   </section>
+
+  <Teleport to="body">
+    <div v-if="statusAction" class="modal-backdrop" @click.self="closeStatusModal">
+      <section class="status-modal" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+        <button class="modal-close" type="button" aria-label="Cerrar" :disabled="changingStatus"
+          @click="closeStatusModal">
+          <X class="w-4 h-4" />
+        </button>
+
+        <div class="modal-icon" :class="statusAction.currentlyActive ? 'warning-icon' : 'success-icon'">
+          <AlertTriangle v-if="statusAction.currentlyActive" class="w-6 h-6" />
+          <Power v-else class="w-6 h-6" />
+        </div>
+
+        <p class="modal-eyebrow">
+          {{ statusAction.currentlyActive ? "Confirmar desactivación" : "Confirmar reactivación" }}
+        </p>
+        <h2 id="status-modal-title">
+          {{ statusAction.currentlyActive ? "¿Desactivar este cine?" : "¿Reactivar este cine?" }}
+        </h2>
+        <p class="modal-description">
+          <strong>{{ statusAction.name }}</strong>
+          {{ statusAction.currentlyActive
+            ? " dejará de estar disponible para nuevas operaciones."
+            : " volverá a estar disponible en el sistema." }}
+        </p>
+
+        <div v-if="statusAction.currentlyActive && (statusAction.activeFunctions > 0 || statusAction.associatedRooms > 0)"
+          class="impact-box">
+          <span><strong>{{ statusAction.activeFunctions }}</strong> funciones activas</span>
+          <span><strong>{{ statusAction.associatedRooms }}</strong> salas asociadas</span>
+        </div>
+
+        <p v-if="statusAction.currentlyActive && statusAction.activeFunctions > 0" class="warning-text">
+          Las funciones existentes no se eliminarán, pero el cine no estará disponible para nuevas operaciones.
+        </p>
+
+        <div class="modal-actions">
+          <button class="ghost-button" type="button" :disabled="changingStatus" @click="closeStatusModal">
+            Cancelar
+          </button>
+          <button class="primary-button" :class="{ 'danger-confirm': statusAction.currentlyActive }" type="button"
+            :disabled="changingStatus" @click="confirmStatusChange">
+            {{ changingStatus
+              ? "Procesando..."
+              : statusAction.currentlyActive ? "Sí, desactivar" : "Sí, reactivar" }}
+          </button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { LayoutDashboard, Search } from "lucide-vue-next";
+import { AlertTriangle, LayoutDashboard, Power, Search, X } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
 
 const router = useRouter();
 const catalog = useCatalogStore();
 const searchQuery = ref("");
 const errorMessage = ref("");
+const changingStatus = ref(false);
+const statusAction = ref<{
+  id: string;
+  name: string;
+  currentlyActive: boolean;
+  activeFunctions: number;
+  associatedRooms: number;
+} | null>(null);
 
 function normalizar(texto: string): string {
   return texto
@@ -70,23 +129,65 @@ const filteredCinemas = computed(() => {
   );
 });
 
-onMounted(() => {
-  if (catalog.cinemas.length === 0) {
-    catalog.loadFromAPI();
+onMounted(async () => {
+  errorMessage.value = "";
+  try {
+    await catalog.loadFromAPI();
+    await catalog.loadAllShowtimes();
+  } catch {
+    errorMessage.value = "No se pudieron cargar todos los detalles de los cines.";
   }
 });
 
-async function toggleStatus(id: string, currentlyActive: boolean) {
+function toggleStatus(id: string, currentlyActive: boolean) {
   errorMessage.value = "";
+
+  const cinema = catalog.cinemaById(id);
+  if (!cinema) {
+    errorMessage.value = "No se encontró el cine seleccionado.";
+    return;
+  }
+
+  const cinemaShowtimes = catalog.showtimes.filter(
+    (showtime) => showtime.cinemaId === id,
+  );
+  const activeFunctions = cinemaShowtimes.filter(
+    (showtime) => showtime.status === "activo",
+  ).length;
+  const associatedRooms = new Set(
+    cinemaShowtimes.map((showtime) => showtime.roomId),
+  ).size;
+
+  statusAction.value = {
+    id,
+    name: cinema.name,
+    currentlyActive,
+    activeFunctions,
+    associatedRooms,
+  };
+}
+
+function closeStatusModal() {
+  if (!changingStatus.value) statusAction.value = null;
+}
+
+async function confirmStatusChange() {
+  if (!statusAction.value) return;
+
+  const action = statusAction.value;
+  changingStatus.value = true;
+  errorMessage.value = "";
+
   try {
-    if (currentlyActive) {
-      await catalog.deleteCine(id);
+    if (action.currentlyActive) {
+      await catalog.deleteCine(action.id);
     } else {
-      await catalog.reactivateCine(id);
+      await catalog.reactivateCine(action.id);
     }
+    statusAction.value = null;
   } catch (err) {
     const apiErr = err as { status?: number };
-    if (currentlyActive) {
+    if (action.currentlyActive) {
       errorMessage.value =
         apiErr.status === 404
           ? "El cine ya estaba desactivado."
@@ -97,6 +198,9 @@ async function toggleStatus(id: string, currentlyActive: boolean) {
           ? "El cine ya está activo."
           : "No se pudo reactivar el cine. Intenta de nuevo.";
     }
+    statusAction.value = null;
+  } finally {
+    changingStatus.value = false;
   }
 }
 </script>
@@ -206,10 +310,159 @@ p {
   opacity: 0.5;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(7px);
+  animation: fade-in .16s ease-out;
+}
+
+.status-modal {
+  position: relative;
+  width: min(100%, 470px);
+  padding: 28px;
+  border: 1px solid rgba(200, 169, 110, 0.25);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #171725, #101019);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  animation: modal-in .18s ease-out;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8a8797;
+  cursor: pointer;
+}
+
+.modal-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+}
+
+.warning-icon {
+  background: rgba(239, 100, 100, 0.13);
+  color: #ef7777;
+}
+
+.success-icon {
+  background: rgba(74, 222, 128, 0.12);
+  color: #6fdc96;
+}
+
+.modal-eyebrow {
+  margin-bottom: 6px;
+  color: #c8a96e;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.status-modal h2 {
+  margin-bottom: 10px;
+  font-family: "Playfair Display", serif;
+  font-size: 24px;
+}
+
+.modal-description {
+  color: #aaa6b5;
+  line-height: 1.55;
+}
+
+.modal-description strong {
+  color: #f0ece4;
+}
+
+.impact-box {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.impact-box span {
+  padding: 12px;
+  border: 1px solid rgba(200, 169, 110, 0.15);
+  border-radius: 10px;
+  background: rgba(200, 169, 110, 0.06);
+  color: #9691a3;
+  font-size: 12px;
+  text-align: center;
+}
+
+.impact-box strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #f0ece4;
+  font-size: 20px;
+}
+
+.warning-text {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-left: 3px solid #c8a96e;
+  border-radius: 0 8px 8px 0;
+  background: rgba(200, 169, 110, 0.07);
+  color: #b9b2a2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.danger-confirm {
+  border-color: #b94b4b;
+  background: #a84242;
+  color: #fff;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+}
+
 @media (max-width: 900px) {
   .section-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .status-modal {
+    padding: 24px 20px;
+  }
+
+  .impact-box {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
   }
 }
 </style>
