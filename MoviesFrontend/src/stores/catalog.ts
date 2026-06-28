@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { peliculasService } from "../services/peliculas.service";
+import { authService } from "../services/auth.service";
 import type { CatalogMovie, Cinema, Customer, Room, Showtime } from "../types";
 
 export const useCatalogStore = defineStore("catalog", () => {
@@ -225,13 +226,47 @@ export const useCatalogStore = defineStore("catalog", () => {
     else rooms.value.unshift(next);
   }
 
-  function toggleCustomerStatus(id: string) {
-    const order: Customer["status"][] = ["activo", "inactivo", "suspendido"];
-    customers.value = customers.value.map((customer) => {
-      if (customer.id !== id) return customer;
-      const index = order.indexOf(customer.status);
-      return { ...customer, status: order[(index + 1) % order.length] };
-    });
+  async function toggleCustomerStatus(id: string) {
+    const current = customers.value.find((c) => c.id === id);
+    if (!current || current.status === "suspendido") return;
+
+    const apiStatus = current.status === "activo" ? "inactive" : "active";
+    const nextStatus = current.status === "activo" ? "inactivo" : "activo";
+
+    try {
+      await authService.updateUserStatus(id, apiStatus);
+      customers.value = customers.value.map((c) =>
+        c.id === id ? { ...c, status: nextStatus } : c,
+      );
+    } catch {
+      // revert silently
+    }
+  }
+
+  async function loadCustomers(params?: { nombre?: string; email?: string; estado?: string }): Promise<void> {
+    try {
+      const data = await authService.findAllUsers(params);
+      customers.value = data.map((u) => {
+        const statusMap: Record<string, Customer["status"]> = {
+          active: "activo",
+          inactive: "inactivo",
+          suspended: "suspendido",
+        };
+        return {
+          id: String(u.id),
+          name: u.nombre,
+          email: u.email,
+          phone: u.telefono ?? "",
+          status: statusMap[u.estado ?? ""] ?? "activo",
+          registeredAt: u.created_at ?? "",
+          reservations: 0,
+          spent: "$0",
+          avatar: u.nombre.charAt(0).toUpperCase(),
+        };
+      });
+    } catch {
+      customers.value = [];
+    }
   }
 
   return {
@@ -244,6 +279,7 @@ export const useCatalogStore = defineStore("catalog", () => {
     loadFromAPI,
     loadFunctionsForMovie,
     loadAllShowtimes,
+    loadCustomers,
     movieById,
     cinemaById,
     roomById,

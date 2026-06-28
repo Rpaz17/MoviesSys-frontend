@@ -68,6 +68,24 @@ export const signupResponseSchema = z.object({
 });
 export type SignupResponse = z.infer<typeof signupResponseSchema>;
 
+export const userListItemSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  nombre: z.string(),
+  email: z.string().email(),
+  telefono: z.string().nullable().optional(),
+  id_rol: z.union([z.string(), z.number()]).optional(),
+  estado: z.string().optional(),
+  created_at: z.string().optional(),
+});
+export type UserListItem = z.infer<typeof userListItemSchema>;
+
+export interface FindAllUsersParams {
+  nombre?: string;
+  email?: string;
+  estado?: string;
+  resultados?: number;
+}
+
 // ── Service ────────────────────────────────────────────────────────────────────
 
 export const authService = {
@@ -106,5 +124,15 @@ export const authService = {
   async updateNotifications(id: string, payload: UpdateNotificationsInput): Promise<UserProfile> {
     const { data } = await apiClient.patch(`/users/${id}/notificaciones`, payload);
     return userProfileSchema.parse(data);
+  },
+
+  async findAllUsers(params?: FindAllUsersParams): Promise<UserListItem[]> {
+    const { data } = await apiClient.get<UserListItem[]>("/users", { params });
+    return z.array(userListItemSchema).parse(data);
+  },
+
+  async updateUserStatus(id: string, estado: string): Promise<UserListItem> {
+    const { data } = await apiClient.put(`/users/${id}`, { estado });
+    return userListItemSchema.parse(data);
   },
 };
