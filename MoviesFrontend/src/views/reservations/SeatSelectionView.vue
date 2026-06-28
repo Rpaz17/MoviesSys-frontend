@@ -402,6 +402,17 @@ async function confirmReservation() {
         return;
     }
 
+    // 3.5. Block every selected seat on the server
+
+    for (const seat of selectedItems) {
+        const result = await bloquearAsiento(showtimeId.value, seat.id_asiento);
+        if (!result) {
+            confirmationError.value = `Error al bloquear el asiento ${seat.label}. Intenta de nuevo.`;
+            isConfirming.value = false;
+            return;
+        }
+    }
+
     // 4. Process payment
     try {
         await reservasService.processPayment({
@@ -419,18 +430,7 @@ async function confirmReservation() {
         return;
     }
 
-    // 5. Block every selected seat on the server
-
-    for (const seat of selectedItems) {
-        const result = await bloquearAsiento(showtimeId.value, seat.id_asiento);
-        if (!result) {
-            confirmationError.value = `Error al bloquear el asiento ${seat.label}. Intenta de nuevo.`;
-            isConfirming.value = false;
-            return;
-        }
-    }
-
-    // 6. Save locally and navigate
+    // 5. Save locally and navigate
     const reservation: Reservation = {
         id: String(reservaCreada.id),
         customerName: session.user.name,
