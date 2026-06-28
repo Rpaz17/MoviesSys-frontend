@@ -42,11 +42,10 @@ export const useCatalogStore = defineStore("catalog", () => {
         cinesService
           .getAll()
           .catch(() => [] as Awaited<ReturnType<typeof cinesService.getAll>>),
-        peliculasService
-          .getCiudades()
+        ciudadesService
+          .getAll()
           .catch(
-            () =>
-              [] as Awaited<ReturnType<typeof peliculasService.getCiudades>>,
+            () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
           ),
       ]);
 
@@ -269,12 +268,12 @@ export const useCatalogStore = defineStore("catalog", () => {
   }
 
   async function createCity(nombre: string): Promise<void> {
-    await ciudadesService.createCiudad({ nombre: nombre });
+    await ciudadesService.createCiudad({ nombre });
     await loadFromAPI();
   }
 
   async function updateCity(id: string, nombre: string): Promise<void> {
-    await ciudadesService.updateCiudad(id, { nombre: nombre });
+    await ciudadesService.updateCiudad(id, { nombre });
     await loadFromAPI();
   }
 
@@ -285,6 +284,9 @@ export const useCatalogStore = defineStore("catalog", () => {
 
   async function reactivateCity(id: string): Promise<void> {
     await ciudadesService.reactivarCiudad(id);
+    await loadFromAPI();
+  }
+
   async function createCine(payload: {
     nombre: string;
     direccion?: string;
@@ -335,9 +337,9 @@ export const useCatalogStore = defineStore("catalog", () => {
     updateCity,
     deleteCity,
     reactivateCity,
-    updateCine,
     createCine,
+    updateCine,
     deleteCine,
     reactivateCine,
-  }
+  };
 });

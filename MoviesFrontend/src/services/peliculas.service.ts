@@ -59,12 +59,6 @@ export const uploadPosterInputSchema = z.object({
 });
 export type UploadPosterInput = z.infer<typeof uploadPosterInputSchema>;
 
-export const ciudadSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  nombre: z.string(),
-});
-export type Ciudad = z.infer<typeof ciudadSchema>;
-
 const cineEnFuncionSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
@@ -135,10 +129,5 @@ export const peliculasService = {
       `/peliculas/${id}/cines/${cineId}/funciones`,
     );
     return z.array(funcionCineSchema).parse(data);
-  },
-
-  async getCines(): Promise<Cine[]> {
-    const { data } = await apiClient.get<Cine[]>("/cines");
-    return z.array(cineSchema).parse(data);
   },
 };
