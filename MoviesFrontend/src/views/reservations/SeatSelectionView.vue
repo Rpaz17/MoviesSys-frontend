@@ -134,7 +134,11 @@
                     :disabled="!canConfirm || isConfirming"
                     @click="confirmReservation"
                 >
-                    {{ isConfirming ? "Bloqueando asientos..." : "Confirmar y pagar" }}
+                    {{
+                        isConfirming
+                            ? "Bloqueando asientos..."
+                            : "Confirmar y pagar"
+                    }}
                 </button>
                 <p v-if="confirmationError" class="error-box">
                     {{ confirmationError }}
@@ -156,6 +160,7 @@ import { useReservationsStore } from "../../stores/reservations";
 import { useSessionStore } from "../../stores/session";
 import { useFormat } from "../../composables/use-format";
 import { useFunciones } from "../../composables/use-funciones";
+import { reservasService } from "../../services/reservas.service";
 import type { Asiento } from "../../services/funciones.service";
 import type { PaymentMethod, Reservation } from "../../types";
 
@@ -352,15 +357,72 @@ async function confirmReservation() {
     confirmationError.value = "";
     blockingError.value = "";
 
-    // Block every selected seat on the server
     const selectedItems = seatList.value.filter((s) =>
         selectedSeats.value.includes(s.id),
     );
+
+    // 2. Get user ID from JWT
+    let userId: number;
+    try {
+        const token = localStorage.getItem("access_token");
+        console.log("TOKEN:", token);
+
+        if (!token) throw new Error("No token");
+
+        const parts = token.split(".");
+        console.log("TOKEN PARTS:", parts);
+
+        const decoded = JSON.parse(atob(parts[1]));
+        console.log("DECODED:", decoded);
+
+        userId = Number(decoded.userId);
+        console.log("USER ID:", userId);
+
+        if (!userId) throw new Error("No user ID in token");
+    } catch (e) {
+        console.error("AUTH ERROR:", e);
+        confirmationError.value =
+            "Error de autenticación. Inicia sesión de nuevo.";
+        isConfirming.value = false;
+        return;
+    }
+
+    // 3. Create reservation via API
+    let reservaCreada: Awaited<ReturnType<typeof reservasService.create>>;
+    try {
+        reservaCreada = await reservasService.create({
+            id_usuario: userId,
+            id_funcion: Number(showtimeId.value),
+            asientosIds: selectedItems.map((s) => Number(s.id)),
+        });
+    } catch {
+        confirmationError.value =
+            "Error al crear la reserva. Intenta de nuevo.";
+        isConfirming.value = false;
+        return;
+    }
+
+    // 4. Process payment
+    try {
+        await reservasService.processPayment({
+            id_reserva: Number(reservaCreada.id),
+            metodo: paymentMethod.value,
+            precio_por_asiento: unitPrice.value,
+            ...(appliedCoupon.value?.code
+                ? { codigo_cupon: appliedCoupon.value.code }
+                : {}),
+        });
+    } catch {
+        confirmationError.value =
+            "Reserva creada pero hubo un error con el pago. Contacta a soporte.";
+        isConfirming.value = false;
+        return;
+    }
+
+    // 5. Block every selected seat on the server
+
     for (const seat of selectedItems) {
-        const result = await bloquearAsiento(
-            showtimeId.value,
-            seat.id_asiento,
-        );
+        const result = await bloquearAsiento(showtimeId.value, seat.id_asiento);
         if (!result) {
             confirmationError.value = `Error al bloquear el asiento ${seat.label}. Intenta de nuevo.`;
             isConfirming.value = false;
@@ -368,8 +430,9 @@ async function confirmReservation() {
         }
     }
 
+    // 6. Save locally and navigate
     const reservation: Reservation = {
-        id: `R${Date.now().toString().slice(-6)}`,
+        id: String(reservaCreada.id),
         customerName: session.user.name,
         customerEmail: session.user.email,
         movieId: movieId.value,
