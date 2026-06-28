@@ -101,6 +101,7 @@ interface MyReservationDisplay {
     movieTitle: string;
     cinemaName: string;
     roomName: string;
+    numeroReserva?: string;
     date: string;
     time: string;
     seats: string[];
@@ -129,13 +130,14 @@ function mapReserva(r: ReservaAPI): MyReservationDisplay {
         movieTitle: r.funciones?.peliculas?.titulo ?? "Película",
         cinemaName: r.funciones?.salas?.cines?.nombre ?? "Cine",
         roomName: r.funciones?.salas?.nombre ?? "Sala",
+        numeroReserva: r.numero_reserva,
         date,
         time,
         seats:
             seatCodes.length > 0
                 ? seatCodes
                 : ["Sin asientos"],
-        total: 0,
+        total: seatCodes.length * 7,
         paymentStatus: "pagado",
         customerName: r.usuarios?.nombre ?? "",
         customerEmail: r.usuarios?.email ?? "",
@@ -160,6 +162,10 @@ function openDetail(item: MyReservationDisplay) {
         showtimeId: "",
         cinemaId: "",
         roomId: "",
+        movieTitle: item.movieTitle,
+        cinemaName: item.cinemaName,
+        roomName: item.roomName,
+        numeroReserva: item.numeroReserva,
         date: item.date,
         time: item.time,
         seats: item.seats,
