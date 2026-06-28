@@ -40,16 +40,23 @@
           <span class="pill">{{ group.items.length }} funciones</span>
         </div>
         <div class="grid-list">
-          <article v-for="showtime in group.items" :key="showtime.id" class="card function-card">
-            <img :src="imageUrl(movieFor(showtime.movieId)?.img)" :alt="movieFor(showtime.movieId)?.title" />
+          <article v-for="funcion in group.items" :key="funcion.id" class="card function-card">
+            <img :src="imageUrl(catalog.movieById(funcion.movieId)?.img)" :alt="catalog.movieById(funcion.movieId)?.title" />
             <div class="card-body">
-              <span class="pill">{{ showtime.format }}</span>
-              <h2>{{ movieFor(showtime.movieId)?.title }}</h2>
-              <p>{{ roomFor(showtime.roomId)?.name }}</p>
-              <p>{{ formatDate(showtime.date) }} · {{ showtime.time }}</p>
+              <span class="pill">{{ funcion.sala.nombre }}</span>
+              <h2>{{ catalog.movieById(funcion.movieId)?.title }}</h2>
+              <p>{{ formatDate(dateFrom(funcion.fecha_hora)) }} · {{ timeFrom(funcion.fecha_hora) }}</p>
               <div class="row-between">
-                <strong>{{ money(priceFor(showtime.format)) }}</strong>
-                <button class="primary-button" type="button" @click="handleReservar(showtime)">Reservar</button>
+                <strong>{{ funcion.disponibilidad.disponibles }} asientos libres</strong>
+                <button
+                  v-if="funcion.disponibilidad.disponibles > 0"
+                  class="primary-button"
+                  type="button"
+                  @click="handleReservar(funcion)"
+                >
+                  Reservar
+                </button>
+                <span v-else class="pill pill-full">Función llena</span>
               </div>
             </div>
           </article>
@@ -65,17 +72,22 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useCatalogStore } from "../../stores/catalog";
 import { useSessionStore } from "../../stores/session";
-import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
-import type { Showtime } from "../../types";
+import { funcionesService } from "../../services/funciones.service";
+import type { FuncionDisponibilidad } from "../../services/funciones.service";
+
+interface FuncionItem extends FuncionDisponibilidad {
+  movieId: string;
+  cinemaId: string;
+}
 
 const router = useRouter();
 const catalog = useCatalogStore();
 const session = useSessionStore();
-const { movieFor, cinemaFor, roomFor, priceFor } = useCatalogHelpers();
-const { money, formatDate, imageUrl } = useFormat();
+const { formatDate, imageUrl } = useFormat();
 
 const isLoading = ref(false);
+const funciones = ref<FuncionItem[]>([]);
 
 const search = ref("");
 const genreFilter = ref("");
@@ -84,17 +96,25 @@ const dateFilter = ref("");
 const cityFilter = ref("");
 const cinemaFilter = ref("");
 
-const availableShowtimes = computed(() =>
-  catalog.showtimes.filter((item) => {
-    if (item.status !== "activo") return false;
-    const movie = movieFor(item.movieId);
-    const cinema = cinemaFor(item.cinemaId);
+function dateFrom(fecha_hora: string) {
+  return fecha_hora.split("T")[0] ?? fecha_hora;
+}
+
+function timeFrom(fecha_hora: string) {
+  const raw = fecha_hora.split("T")[1];
+  return raw ? raw.slice(0, 5) : "";
+}
+
+const availableFunciones = computed(() =>
+  funciones.value.filter((item) => {
+    const movie = catalog.movieById(item.movieId);
+    const cinema = catalog.cinemaById(item.cinemaId);
     const query = search.value.toLowerCase();
     return (
       (!query || movie?.title.toLowerCase().includes(query)) &&
       (!genreFilter.value || movie?.genre === genreFilter.value) &&
       (!languageFilter.value || movie?.language === languageFilter.value) &&
-      (!dateFilter.value || item.date === dateFilter.value) &&
+      (!dateFilter.value || dateFrom(item.fecha_hora) === dateFilter.value) &&
       (!cityFilter.value || cinema?.city === cityFilter.value) &&
       (!cinemaFilter.value || item.cinemaId === cinemaFilter.value)
     );
@@ -105,7 +125,7 @@ const showtimeGroups = computed(() =>
   catalog.cinemas
     .map((cinema) => ({
       cinema,
-      items: availableShowtimes.value.filter((showtime) => showtime.cinemaId === cinema.id),
+      items: availableFunciones.value.filter((f) => f.cinemaId === cinema.id),
     }))
     .filter((group) => group.items.length > 0),
 );
@@ -128,22 +148,43 @@ onMounted(async () => {
   if (catalog.cinemas.length === 0 || catalog.movies.length === 0) {
     await catalog.loadFromAPI();
   }
-  await catalog.loadAllShowtimes();
+
+  const activeMovies = catalog.movies.filter((m) => m.activo);
+  const results = await Promise.allSettled(
+    activeMovies.flatMap((movie) =>
+      catalog.cinemas.map((cinema) =>
+        funcionesService
+          .getFuncionesDisponibilidad(movie.id, cinema.id)
+          .then((data) => ({ movieId: movie.id, cinemaId: cinema.id, data })),
+      ),
+    ),
+  );
+
+  const all: FuncionItem[] = [];
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    const { movieId, cinemaId, data } = result.value;
+    for (const f of data) {
+      all.push({ ...f, movieId, cinemaId });
+    }
+  }
+  funciones.value = all;
   isLoading.value = false;
 });
 
-function handleReservar(showtime: Showtime) {
+function handleReservar(funcion: FuncionItem) {
+  const seatUrl = `/reservas/funciones/${funcion.id}/asientos?movieId=${funcion.movieId}&cinemaId=${funcion.cinemaId}&room=${encodeURIComponent(funcion.sala.nombre)}&fecha=${encodeURIComponent(funcion.fecha_hora)}`;
   if (!session.user) {
     router.push({
       path: "/login",
       query: {
         reason: "checkout",
-        redirect: `/reservas/funciones/${showtime.id}/asientos`,
+        redirect: seatUrl,
       },
     });
     return;
   }
-  router.push(`/reservas/funciones/${showtime.id}/asientos`);
+  router.push(seatUrl);
 }
 </script>
 
@@ -162,6 +203,12 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .function-card { overflow: hidden; padding: 0; transition: transform .15s, border-color .15s; }
 .function-card:hover { transform: translateY(-2px); border-color: rgba(200,169,110,0.22); }
 .function-card img { width: 100%; height: 170px; object-fit: cover; }
+.pill-full {
+  background: rgba(200, 60, 60, 0.15);
+  color: #e06060;
+  border-color: transparent;
+  white-space: nowrap;
+}
 .card-body { padding: 1rem 1.125rem; display: grid; gap: 8px; }
 .row-between { display: flex; justify-content: space-between; gap: 14px; align-items: center; font-size: .875rem; }
 .row-between strong { text-align: right; color: #f0ece4; }

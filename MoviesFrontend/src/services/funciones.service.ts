@@ -76,18 +76,39 @@ export const funcionesService = {
 
   async getAsientos(funcionId: number | string): Promise<Asiento[]> {
     const { data } = await apiClient.get(`/funciones/${funcionId}/asientos`);
+    // API returns an object like { "A": [...seats], "B": [...seats] }
+    if (typeof data === "object" && !Array.isArray(data) && data !== null) {
+      const result: Asiento[] = [];
+      for (const [rowKey, seats] of Object.entries(data)) {
+        const fila = rowKey.trim().charCodeAt(0) - 64;
+        if (!Array.isArray(seats)) continue;
+        seats.forEach((seat: any, index: number) => {
+          result.push({
+            id: String(seat.id ?? ""),
+            fila,
+            columna: seat.columna ?? index + 1,
+            estado: seat.estado ?? "disponible",
+            id_asiento: String(seat.id_asiento ?? seat.id ?? ""),
+            id_funcion: String(seat.id_funcion ?? funcionId),
+          });
+        });
+      }
+      return result;
+    }
     return z.array(asientoSchema).parse(data);
   },
 
   async bloquearAsiento(
     funcionId: number | string,
     payload: BloquearAsientoInput,
-  ): Promise<z.infer<typeof bloqueoResponseSchema>> {
+  ): Promise<z.infer<typeof bloqueoResponseSchema> | true> {
     const { data } = await apiClient.post(
       `/funciones/${funcionId}/asientos/bloquear`,
       payload,
     );
-    return bloqueoResponseSchema.parse(data);
+    const parsed = bloqueoResponseSchema.safeParse(data);
+    if (parsed.success) return parsed.data;
+    return true; // 2xx but unexpected shape — still a success
   },
 
   async create(payload: CreateFuncionInput): Promise<{ id: number | string }> {
