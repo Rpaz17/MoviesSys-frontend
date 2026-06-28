@@ -5,6 +5,7 @@ import { authService } from "../services/auth.service";
 import type { CatalogMovie, Cinema, Customer, Room, Showtime } from "../types";
 import { ciudadesService } from "../services/ciudades.services";
 import { cinesService } from "../services/cines.service";
+import { salasService } from "../services/salas.service";
 
 export const useCatalogStore = defineStore("catalog", () => {
   const movies = ref<CatalogMovie[]>([]);
@@ -24,7 +25,7 @@ export const useCatalogStore = defineStore("catalog", () => {
 
   async function loadFromAPI(): Promise<void> {
     try {
-      const [data, idiomas, generos, cineData, ciudadData] = await Promise.all([
+      const [data, idiomas, generos, cineData, ciudadData, salaData] = await Promise.all([
         peliculasService
           .search()
           .catch(
@@ -48,6 +49,9 @@ export const useCatalogStore = defineStore("catalog", () => {
           .catch(
             () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
           ),
+        salasService
+          .getAll()
+          .catch(() => [] as Awaited<ReturnType<typeof salasService.getAll>>),
       ]);
 
       idiomaNames.value = new Map(idiomas.map((i) => [String(i.id), i.nombre]));
@@ -82,6 +86,28 @@ export const useCatalogStore = defineStore("catalog", () => {
         functions: 0,
         revenue: "$0",
         img: "",
+      }));
+
+      rooms.value = salaData.map((s) => {
+        const cinemaId = String(s.id_cine);
+        const cinema = cinemas.value.find((c) => c.id === cinemaId);
+        return {
+          id: String(s.id),
+          name: s.nombre,
+          cinemaId,
+          cinema: cinema?.name ?? "Desconocido",
+          type: "2D" as const,
+          rows: s.filas,
+          cols: s.columnas,
+          status: "activo" as const,
+          functions: s.funciones_activas ?? 0,
+          occupancy: 0,
+        };
+      });
+
+      cinemas.value = cinemas.value.map((cine) => ({
+        ...cine,
+        rooms: rooms.value.filter((room) => room.cinemaId === cine.id).length,
       }));
 
       cities.value = ciudadData.map((c) => ({
@@ -349,6 +375,29 @@ export const useCatalogStore = defineStore("catalog", () => {
     await loadFromAPI();
   }
 
+  async function createRoom(payload: {
+    nombre: string;
+    id_cine: number | string;
+    filas: number;
+    columnas: number;
+  }): Promise<void> {
+    await salasService.create(payload.id_cine, {
+      nombre: payload.nombre,
+      filas: payload.filas,
+      columnas: payload.columnas,
+    });
+    await loadFromAPI();
+  }
+
+  async function updateRoom(
+    id: string,
+    payload: { nombre: string },
+  ): Promise<{ warning?: string }> {
+    const sala = await salasService.update(id, { nombre: payload.nombre });
+    await loadFromAPI();
+    return { warning: sala.advertencia };
+  }
+
   return {
     movies,
     cinemas,
@@ -377,5 +426,7 @@ export const useCatalogStore = defineStore("catalog", () => {
     updateCine,
     deleteCine,
     reactivateCine,
+    createRoom,
+    updateRoom,
   };
 });
