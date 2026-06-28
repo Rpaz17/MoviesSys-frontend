@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { Ban, BarChart3, Building2, CalendarClock, Clapperboard, LayoutGrid, MapPin, Percent, Ticket, Users } from "lucide-vue-next";
+import { Ban, BarChart3, Building2, CalendarClock, Clapperboard, CreditCard, LayoutGrid, MapPin, Percent, Ticket, Users } from "lucide-vue-next";
 import { useSessionStore } from "../../stores/session";
 
 const router = useRouter();
@@ -66,6 +66,11 @@ const greeting = computed(() => {
           <span class="dash-label">Reportes</span>
           <span class="dash-desc">Reservas, pagos y CSV</span>
         </button>
+        <button class="dash-card" @click="router.push('/admin/pagos')">
+          <CreditCard class="dash-icon" />
+          <span class="dash-label">Historial de pagos</span>
+          <span class="dash-desc">Pagos y reembolsos</span>
+        </button>
         <button class="dash-card" @click="router.push('/admin/cupones')">
           <Percent class="dash-icon" />
           <span class="dash-label">Cupones</span>
@@ -82,17 +87,85 @@ const greeting = computed(() => {
 </template>
 
 <style scoped>
-.section-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-end; margin-bottom: 20px; }
-.eyebrow { color: #c8a96e; font-family: "DM Mono", monospace; text-transform: uppercase; font-size: 11px; letter-spacing: .09em; margin: 0 0 4px; }
-h1 { font-size: clamp(20px, 2.5vw, 30px); font-weight: 600; color: #f0ece4; margin: 0; font-family: 'Playfair Display', serif; letter-spacing: -0.01em; }
-.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-.dash-card { display: flex; flex-direction: column; align-items: flex-start; gap: .375rem; padding: 1.25rem 1.25rem 1.125rem; border-radius: 4px; text-align: left; border: 1px solid rgba(200,169,110,0.12); background: rgba(200,169,110,0.04); transition: transform .12s, border-color .12s, background .12s; }
-.dash-card:hover { transform: translateY(-1px); background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.25); }
-.dash-card:active { transform: scale(.98); }
-.dash-icon { width: 1.25rem; height: 1.25rem; color: #c8a96e; margin-bottom: .25rem; }
-.dash-label { font-size: .9375rem; font-weight: 600; color: #f0ece4; line-height: 1.2; }
-.dash-desc { font-size: .75rem; color: #7a7590; line-height: 1.3; }
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  color: #c8a96e;
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: .09em;
+  margin: 0 0 4px;
+}
+
+h1 {
+  font-size: clamp(20px, 2.5vw, 30px);
+  font-weight: 600;
+  color: #f0ece4;
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .375rem;
+  padding: 1.25rem 1.25rem 1.125rem;
+  border-radius: 4px;
+  text-align: left;
+  border: 1px solid rgba(200, 169, 110, 0.12);
+  background: rgba(200, 169, 110, 0.04);
+  transition: transform .12s, border-color .12s, background .12s;
+}
+
+.dash-card:hover {
+  transform: translateY(-1px);
+  background: rgba(200, 169, 110, 0.08);
+  border-color: rgba(200, 169, 110, 0.25);
+}
+
+.dash-card:active {
+  transform: scale(.98);
+}
+
+.dash-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #c8a96e;
+  margin-bottom: .25rem;
+}
+
+.dash-label {
+  font-size: .9375rem;
+  font-weight: 600;
+  color: #f0ece4;
+  line-height: 1.2;
+}
+
+.dash-desc {
+  font-size: .75rem;
+  color: #7a7590;
+  line-height: 1.3;
+}
+
 @media (max-width: 900px) {
-  .section-header { align-items: stretch; flex-direction: column; }
+  .section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>
