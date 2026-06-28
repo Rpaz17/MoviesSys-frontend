@@ -4,6 +4,7 @@ import { apiClient } from "../lib/api-client";
 export const ciudadSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
+  activo: z.boolean().optional(),
 });
 export type Ciudad = z.infer<typeof ciudadSchema>;
 
@@ -16,7 +17,6 @@ export const updateCiudadInputSchema = z.object({
   nombre: z.string().min(1),
 });
 export type UpdateCiudadInput = z.infer<typeof updateCiudadInputSchema>;
-
 
 export const ciudadesService = {
   async getAll(): Promise<Ciudad[]> {
@@ -35,5 +35,13 @@ export const ciudadesService = {
   ): Promise<Ciudad> {
     const { data } = await apiClient.patch(`/ciudades/${id}`, payload);
     return ciudadSchema.parse(data);
+  },
+
+  async deleteCiudad(id: number | string): Promise<void> {
+    await apiClient.delete(`/ciudades/${id}`);
+  },
+
+  async reactivarCiudad(id: number | string): Promise<void> {
+    await apiClient.patch(`/ciudades/${id}/reactivar`);
   },
 };

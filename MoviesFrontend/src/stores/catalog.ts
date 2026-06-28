@@ -86,7 +86,7 @@ export const useCatalogStore = defineStore("catalog", () => {
       cities.value = ciudadData.map((c) => ({
         id: String(c.id),
         name: c.nombre,
-        active: true,
+        active: c.activo !== false,
       }));
     } catch {
       // stay empty if API unavailable
@@ -164,14 +164,12 @@ export const useCatalogStore = defineStore("catalog", () => {
     const results = await Promise.allSettled(
       activeMovies.flatMap((movie) =>
         cinemas.value.map((cine) =>
-          peliculasService
-            .getFunciones(movie.id, cine.id)
-            .then((data) => ({
-              movieId: movie.id,
-              cinemaId: cine.id,
-              cineName: cine.name,
-              data,
-            })),
+          peliculasService.getFunciones(movie.id, cine.id).then((data) => ({
+            movieId: movie.id,
+            cinemaId: cine.id,
+            cineName: cine.name,
+            data,
+          })),
         ),
       ),
     );
@@ -270,12 +268,22 @@ export const useCatalogStore = defineStore("catalog", () => {
   }
 
   async function createCity(nombre: string): Promise<void> {
-    await ciudadesService.createCiudad({ nombre });
+    await ciudadesService.createCiudad({ nombre: nombre });
     await loadFromAPI();
   }
 
   async function updateCity(id: string, nombre: string): Promise<void> {
-    await ciudadesService.updateCiudad(id, { nombre });
+    await ciudadesService.updateCiudad(id, { nombre: nombre });
+    await loadFromAPI();
+  }
+
+  async function deleteCity(id: string): Promise<void> {
+    await ciudadesService.deleteCiudad(id);
+    await loadFromAPI();
+  }
+
+  async function reactivateCity(id: string): Promise<void> {
+    await ciudadesService.reactivarCiudad(id);
     await loadFromAPI();
   }
 
@@ -300,5 +308,7 @@ export const useCatalogStore = defineStore("catalog", () => {
     toggleCustomerStatus,
     createCity,
     updateCity,
+    deleteCity,
+    reactivateCity,
   };
 });
