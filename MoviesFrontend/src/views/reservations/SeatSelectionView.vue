@@ -345,7 +345,7 @@ onMounted(async () => {
 
     refreshTimer = window.setInterval(async () => {
         await fetchAsientos(showtimeId.value);
-    }, 30000);
+    }, 13000);
 });
 
 onUnmounted(() => {
