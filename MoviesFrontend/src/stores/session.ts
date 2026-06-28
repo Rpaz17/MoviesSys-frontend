@@ -14,12 +14,16 @@ export const useSessionStore = defineStore("session", () => {
     const r = String(role);
     switch (r) {
       case "1":
-      case "admin": return "administrador";
+      case "admin":
+        return "administrador";
       case "2":
-      case "client": return "cliente";
+      case "client":
+        return "cliente";
       case "3":
-      case "receptionist": return "recepcionista";
-      default: return "cliente";
+      case "receptionist":
+        return "recepcionista";
+      default:
+        return "cliente";
     }
   }
 
@@ -32,10 +36,20 @@ export const useSessionStore = defineStore("session", () => {
   }
 
   function extractUserId(decoded: Record<string, string>): string {
-    return decoded.sub || decoded.id || decoded.userId || decoded.user_id || decoded.usuario_id || "";
+    return (
+      decoded.sub ||
+      decoded.id ||
+      decoded.userId ||
+      decoded.user_id ||
+      decoded.usuario_id ||
+      ""
+    );
   }
 
-  function extractName(decoded: Record<string, string>, fallback: string): string {
+  function extractName(
+    decoded: Record<string, string>,
+    fallback: string,
+  ): string {
     return decoded.nombre || decoded.name || fallback;
   }
 
@@ -85,7 +99,10 @@ export const useSessionStore = defineStore("session", () => {
         phone: "",
         notifications: true,
       };
-      authService.getMe().then(applyUserProfile).catch(() => {});
+      authService
+        .getMe()
+        .then(applyUserProfile)
+        .catch(() => {});
     } catch {
       localStorage.removeItem("access_token");
     }
@@ -100,14 +117,21 @@ export const useSessionStore = defineStore("session", () => {
       const decoded = decodeToken(res.access_token);
       console.log("JWT payload:", decoded);
       setUserFromToken(res.access_token, email);
-      authService.getMe().then(applyUserProfile).catch(() => {});
+      authService
+        .getMe()
+        .then(applyUserProfile)
+        .catch(() => {});
       return true;
     } catch {
       return false;
     }
   }
 
-  async function register(name: string, email: string, password: string): Promise<boolean> {
+  async function register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<boolean> {
     try {
       const res = await authService.signup({ nombre: name, email, password });
       localStorage.setItem("access_token", res.access_token);
@@ -142,23 +166,36 @@ export const useSessionStore = defineStore("session", () => {
     user.value = null;
   }
 
-  async function changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
+  async function changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
     const token = localStorage.getItem("access_token");
     if (!token) return false;
     const userId = extractUserId(decodeToken(token));
     if (!userId) {
-      console.warn("changePassword: no se encontro ID de usuario en el token. Claims disponibles:", Object.keys(decoded));
+      console.warn(
+        "changePassword: no se encontro ID de usuario en el token. Claims disponibles:",
+        Object.keys(decodeToken(token)),
+      );
       return false;
     }
     try {
-      await authService.changePassword(userId, { currentPassword, newPassword });
+      await authService.changePassword(userId, {
+        currentPassword,
+        newPassword,
+      });
       return true;
     } catch {
       return false;
     }
   }
 
-  async function updateProfile(name: string, email: string, phone: string, notifications: boolean): Promise<boolean> {
+  async function updateProfile(
+    name: string,
+    email: string,
+    phone: string,
+  ): Promise<boolean> {
     const token = localStorage.getItem("access_token");
     if (!token) return false;
     const userId = extractUserId(decodeToken(token));
@@ -169,9 +206,6 @@ export const useSessionStore = defineStore("session", () => {
         email,
         telefono: phone || undefined,
       });
-      authService.updateNotifications(userId, {
-        notificaciones_activas: notifications,
-      }).catch(() => {});
       applyUserProfile(profile);
       return true;
     } catch {
@@ -179,5 +213,34 @@ export const useSessionStore = defineStore("session", () => {
     }
   }
 
-  return { user, isAuthenticated, isAdmin, isReceptionist, login, register, updateUser, logout, changePassword, updateProfile };
+  async function toggleNotifications(value: boolean): Promise<boolean> {
+    const token = localStorage.getItem("access_token");
+    if (!token) return false;
+    const userId = extractUserId(decodeToken(token));
+    if (!userId) return false;
+    try {
+      const profile = await authService.updateNotifications(userId, {
+        notificaciones_activas: value,
+      });
+      applyUserProfile(profile);
+      return true;
+    } catch (error) {
+      console.error("Error al actualizar las notificaciones:", error);
+      return false;
+    }
+  }
+
+  return {
+    user,
+    isAuthenticated,
+    isAdmin,
+    isReceptionist,
+    login,
+    register,
+    updateUser,
+    logout,
+    changePassword,
+    updateProfile,
+    toggleNotifications,
+  };
 });
