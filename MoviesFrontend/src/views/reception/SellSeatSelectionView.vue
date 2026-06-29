@@ -8,7 +8,9 @@
       <button class="ghost-button" type="button" @click="router.push('/recepcion/vender')">Volver a funciones</button>
     </div>
 
-    <div v-if="sellShowtime" class="booking-grid">
+    <div v-if="isLoading" class="empty-state card">Cargando asientos...</div>
+
+    <div v-else-if="sellShowtime" class="booking-grid">
       <article class="card seat-card">
         <div class="screen">Pantalla</div>
         <div class="seat-scroll" aria-label="Mapa de asientos">
@@ -18,8 +20,13 @@
               :key="seat"
               type="button"
               class="seat"
-              :class="{ reserved: sellReservedSeats.has(seat), selected: sellSeats.includes(seat) }"
-              :disabled="sellReservedSeats.has(seat)"
+              :class="{
+                reserved: isReserved(seat),
+                selected: sellSeats.includes(seat),
+                'own-blocked': isOwnBlocked(seat),
+                'blocked-other': isBlockedByOther(seat),
+              }"
+              :disabled="isReserved(seat) || isBlockedByOther(seat)"
               @click="toggleSellSeat(seat)"
             >
               {{ seat }}
@@ -29,7 +36,9 @@
         <div class="legend">
           <span><i class="seat-dot available"></i>Disponible</span>
           <span><i class="seat-dot selected-dot"></i>Seleccionado</span>
-          <span><i class="seat-dot reserved-dot"></i>Reservado</span>
+          <span><i class="seat-dot own-blocked-dot"></i>Bloqueado por ti</span>
+          <span><i class="seat-dot reserved-dot"></i>No disponible</span>
+          <span v-if="sellingError" class="error-msg legend-error">{{ sellingError }}</span>
         </div>
       </article>
 
@@ -97,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useCatalogStore } from "../../stores/catalog";
@@ -105,8 +114,9 @@ import { useReservationsStore } from "../../stores/reservations";
 import { useSessionStore } from "../../stores/session";
 import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
+import { useFunciones } from "../../composables/use-funciones";
 import { reservasService } from "../../services/reservas.service";
-import { funcionesService } from "../../services/funciones.service";
+import type { Asiento } from "../../services/funciones.service";
 import SellReceiptModal from "../../components/SellReceiptModal.vue";
 import type { Reservation, Showtime } from "../../types";
 
@@ -118,8 +128,46 @@ const session = useSessionStore();
 const { reservations } = storeToRefs(reservationsStore);
 const { movieFor, cinemaFor, roomFor, priceFor } = useCatalogHelpers();
 const { money } = useFormat();
+const {
+  asientos,
+  fetchAsientos,
+  bloquearAsiento: bloquear,
+  liberarAsiento: liberar,
+  isPending,
+} = useFunciones();
 
 const showtimeId = computed(() => String(route.params.showtimeId));
+const isLoading = ref(false);
+
+const currentUserId = computed(() => session.user?.id ?? "");
+
+let refreshTimer: number | undefined;
+
+onMounted(async () => {
+  isLoading.value = true;
+  console.log("[SellSeatSelectionView] mounted, showtimeId:", showtimeId.value);
+
+  if (catalog.showtimes.length === 0 || catalog.movies.length === 0) {
+    await catalog.loadAllShowtimes();
+    console.log("[SellSeatSelectionView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
+  }
+
+  await reservationsStore.loadFromAPI();
+  console.log("[SellSeatSelectionView] reservations loaded:", reservations.value.length);
+
+  await fetchAsientos(showtimeId.value);
+  console.log("[SellSeatSelectionView] asientos from API:", asientos.value.length);
+
+  isLoading.value = false;
+
+  refreshTimer = window.setInterval(async () => {
+    await fetchAsientos(showtimeId.value);
+  }, 13000);
+});
+
+onUnmounted(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer);
+});
 
 const sellShowtime = computed<Showtime | null>(() =>
   catalog.showtimes.find((s) => s.id === showtimeId.value) ?? null
@@ -135,6 +183,7 @@ const cardExpiry = ref("");
 const cardCvv = ref("");
 const isConfirming = ref(false);
 const sellError = ref("");
+const sellingError = ref("");
 
 const sellMovie = computed(() => (sellShowtime.value ? movieFor(sellShowtime.value.movieId) : undefined));
 const sellCinema = computed(() => (sellShowtime.value ? cinemaFor(sellShowtime.value.cinemaId) : undefined));
@@ -143,18 +192,50 @@ const sellRoom = computed(() => (sellShowtime.value ? roomFor(sellShowtime.value
 const sellSeatList = computed(() => {
   const room = sellRoom.value;
   if (!room) return [];
+  if (asientos.value.length > 0) {
+    return asientos.value.map((a) =>
+      `${String.fromCharCode(64 + (a.fila ?? 0))}${a.columna ?? 0}`
+    );
+  }
   return Array.from({ length: room.rows * room.cols }, (_, index) =>
     `${String.fromCharCode(65 + Math.floor(index / room.cols))}${(index % room.cols) + 1}`
   );
 });
 
-const sellReservedSeats = computed(() =>
-  new Set(
-    reservations.value
-      .filter((item) => item.showtimeId === sellShowtime.value?.id && item.status !== "cancelada")
-      .flatMap((item) => item.seats)
-  )
-);
+function findAsientoByLabel(label: string): Asiento | undefined {
+  return asientos.value.find((a) =>
+    `${String.fromCharCode(64 + (a.fila ?? 0))}${a.columna ?? 0}` === label
+  );
+}
+
+function normalizeEstado(estado: string): string {
+  const e = estado.toLowerCase();
+  if (e === "blocked" || e === "bloqueado") return "bloqueado";
+  if (e === "reserved" || e === "reservado" || e === "occupied" || e === "ocupado") return "reservado";
+  if (e === "available" || e === "disponible") return "disponible";
+  return estado;
+}
+
+function isReserved(label: string): boolean {
+  const a = findAsientoByLabel(label);
+  if (!a) return false;
+  const estado = normalizeEstado(a.estado ?? "disponible");
+  return estado !== "disponible" && estado !== "bloqueado" && !sellSeats.value.includes(label);
+}
+
+function isOwnBlocked(label: string): boolean {
+  const a = findAsientoByLabel(label);
+  if (!a || !currentUserId.value) return false;
+  const estado = normalizeEstado(a.estado ?? "disponible");
+  return estado === "bloqueado" && String(a.id_usuario) === currentUserId.value && !sellSeats.value.includes(label);
+}
+
+function isBlockedByOther(label: string): boolean {
+  const a = findAsientoByLabel(label);
+  if (!a) return false;
+  const estado = normalizeEstado(a.estado ?? "disponible");
+  return estado === "bloqueado" && String(a.id_usuario) !== currentUserId.value && !sellSeats.value.includes(label);
+}
 
 const sellTotal = computed(() =>
   sellSeats.value.length * (sellShowtime.value ? priceFor(sellShowtime.value.format) : 0)
@@ -166,10 +247,40 @@ const canSell = computed(() => {
   return !!(cardNumber.value && cardExpiry.value && cardCvv.value);
 });
 
-function toggleSellSeat(seat: string) {
-  sellSeats.value = sellSeats.value.includes(seat)
-    ? sellSeats.value.filter((item) => item !== seat)
-    : [...sellSeats.value, seat];
+async function toggleSellSeat(seat: string) {
+  if (sellSeats.value.includes(seat)) {
+    sellSeats.value = sellSeats.value.filter((item) => item !== seat);
+    sellingError.value = "";
+    const a = findAsientoByLabel(seat);
+    if (a && asientos.value.length > 0) {
+      liberar(showtimeId.value, String(a.id_asiento ?? a.id));
+    }
+    return;
+  }
+
+  if (isReserved(seat) || isBlockedByOther(seat)) return;
+
+  if (asientos.value.length === 0) {
+    sellSeats.value = [...sellSeats.value, seat];
+    return;
+  }
+
+  const a = findAsientoByLabel(seat);
+  if (!a) return;
+
+  const blocked = await bloquear(showtimeId.value, String(a.id_asiento ?? a.id));
+  console.log("[SellSeatSelectionView] toggleSeat bloqueo:", { label: seat, id_asiento: a.id_asiento, result: blocked });
+  if (!blocked) {
+    sellingError.value = `El asiento ${seat} ya no esta disponible.`;
+    const idx = asientos.value.findIndex((as) => as.id === a.id);
+    if (idx >= 0) {
+      asientos.value[idx] = { ...asientos.value[idx], estado: "reservado" };
+    }
+    return;
+  }
+
+  sellingError.value = "";
+  sellSeats.value = [...sellSeats.value, seat];
 }
 
 function extractUserIdFromToken(): number {
@@ -195,11 +306,21 @@ async function confirmSell() {
     return;
   }
 
+  const selectedAsientos = asientos.value.filter((a) => {
+    const label = `${String.fromCharCode(64 + (a.fila ?? 0))}${a.columna ?? 0}`;
+    return sellSeats.value.includes(label);
+  });
+  const asientosIds = selectedAsientos.length > 0
+    ? selectedAsientos.map((a) => Number(a.id))
+    : sellSeats.value.map((_, i) => -(i + 1));
+
+  console.log("[SellSeatSelectionView] confirmSell asientosIds:", asientosIds);
+
   try {
     const reservaCreada = await reservasService.create({
       id_usuario: userId,
       id_funcion: Number(showtimeId.value),
-      asientosIds: [],
+      asientosIds,
     });
 
     const precioPorAsiento = sellShowtime.value ? priceFor(sellShowtime.value.format) : sellTotal.value / sellSeats.value.length;
@@ -253,6 +374,7 @@ function closeSellReceipt() {
   cardExpiry.value = "";
   cardCvv.value = "";
   paymentMethod.value = "efectivo";
+  sellingError.value = "";
   router.push("/recepcion/vender");
 }
 </script>
@@ -275,9 +397,12 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .seat:hover:not(:disabled) { background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.3); }
 .seat.selected { background: #c8a96e; border-color: #c8a96e; color: #0a0a0f; font-weight: 600; }
 .seat.reserved { background: rgba(200,60,60,0.18); color: rgba(255,255,255,0.3); cursor: not-allowed; border-color: rgba(200,60,60,0.2); }
+.seat.own-blocked { background: rgba(200,169,110,0.15); color: #c8a96e; border-color: rgba(200,169,110,0.3); }
+.seat.blocked-other { background: rgba(200,60,60,0.18); color: rgba(255,255,255,0.3); cursor: not-allowed; border-color: rgba(200,60,60,0.2); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; color: #7a7590; font-size: .75rem; }
 .seat-dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(200,169,110,0.2); }
 .selected-dot { background: #c8a96e; border-color: #c8a96e; }
+.own-blocked-dot { background: rgba(200,169,110,0.3); border-color: rgba(200,169,110,0.5); }
 .reserved-dot { background: rgba(200,60,60,0.45); border-color: rgba(200,60,60,0.3); }
 .checkout-card { display: grid; gap: 12px; min-width: 0; padding: 1.375rem; position: sticky; top: 72px; }
 .field { display: grid; gap: 6px; color: #c8a96e; font-size: .8125rem; font-weight: 500; }
@@ -291,6 +416,7 @@ p { color: #7a7590; margin: 0; font-size: .875rem; }
 .pos-change strong { font-size: 1.125rem; color: #4caf7d; }
 .payment-grid { display: grid; gap: 8px; }
 .error-msg { color: #e8607a; font-size: .75rem; margin: 0; }
+.legend-error { width: 100%; margin-top: 4px; }
 .empty-state { padding: 3rem 1.5rem; text-align: center; color: #7a7590; font-size: .875rem; }
 @media (max-width: 900px) {
   .booking-grid { grid-template-columns: 1fr; }

@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
@@ -124,6 +124,15 @@ function resetShowtime() {
   saveError.value = "";
 }
 
+onMounted(async () => {
+  console.log("[AdminShowtimesView] mounted, showtimes:", catalog.showtimes.length);
+  if (catalog.showtimes.length === 0 || catalog.movies.length === 0) {
+    await catalog.loadAllShowtimes();
+    console.log("[AdminShowtimesView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
+  }
+  resetShowtime();
+});
+
 async function saveShowtime() {
   if (!showtimeForm.movieId || !showtimeForm.roomId || !showtimeForm.date || !showtimeForm.time) return;
   isSaving.value = true;
@@ -156,8 +165,6 @@ async function confirmCancelShowtime() {
   }
   cancelShowtimeTarget.value = null;
 }
-
-resetShowtime();
 </script>
 
 <style scoped>
