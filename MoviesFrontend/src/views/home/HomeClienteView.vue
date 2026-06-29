@@ -52,11 +52,6 @@ function logout() {
           <span class="hv-card-title">Mis reservas</span>
           <span class="hv-card-desc">Historial y confirmaciones</span>
         </button>
-        <button class="hv-card hv-purple" @click="router.push('/profile/payments')">
-          <CreditCard class="hv-card-icon" />
-          <span class="hv-card-title">Pagos</span>
-          <span class="hv-card-desc">Metodos de pago guardados</span>
-        </button>
         <button class="hv-card hv-gold" @click="router.push('/profile')">
           <User class="hv-card-icon" />
           <span class="hv-card-title">Perfil</span>

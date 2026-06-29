@@ -30,13 +30,6 @@ const adminLinks = [
   { label: "Vender", to: "/recepcion/vender" },
   { label: "Peliculas", to: "/admin/peliculas" },
   { label: "Funciones", to: "/admin/funciones" },
-  { label: "Cines", to: "/admin/cines" },
-  { label: "Ciudades", to: "/admin/ciudades" },
-  { label: "Salas", to: "/admin/salas" },
-  { label: "Clientes", to: "/admin/clientes" },
-  { label: "Reportes", to: "/admin/reportes" },
-  { label: "Cupones", to: "/admin/cupones" },
-  { label: "Cancelaciones", to: "/admin/cancelaciones" },
 ];
 
 const receptionLinks = [
@@ -48,7 +41,6 @@ const receptionLinks = [
 const clientLinks = [
   { label: "Funciones", to: "/reservas/funciones" },
   { label: "Peliculas", to: "/reservas/peliculas" },
-  { label: "Pagos", to: "/profile/payments" },
   { label: "Mis Reservas", to: "/reservas/mis-reservas" },
 ];
 
@@ -118,16 +110,10 @@ function logout() {
                 </template>
                 <template v-else-if="!session.isAdmin">
                   <button class="dropdown-item" @click="go('/reservas/mis-reservas')"><Ticket class="w-3.5 h-3.5" /> Mis reservas</button>
-                  <button class="dropdown-item" @click="go('/profile/payments')"><Ticket class="w-3.5 h-3.5" /> Metodos de pago</button>
                 </template>
                 <template v-else>
                   <button class="dropdown-item" @click="go('/recepcion/vender')"><Ticket class="w-3.5 h-3.5" /> Vender boletos</button>
-                  <button class="dropdown-item" @click="go('/admin/reportes')"><Ticket class="w-3.5 h-3.5" /> Reportes</button>
                   <button class="dropdown-item" @click="go('/admin/funciones')"><CalendarClock class="w-3.5 h-3.5" /> Funciones</button>
-                  <button class="dropdown-item" @click="go('/admin/cupones')"><Percent class="w-3.5 h-3.5" /> Cupones</button>
-                  <button class="dropdown-item" @click="go('/admin/peliculas/crear')"><Clapperboard class="w-3.5 h-3.5" /> Nueva pelicula</button>
-                  <button class="dropdown-item" @click="go('/admin/cines')"><MapPin class="w-3.5 h-3.5" /> Ver cines</button>
-                  <button class="dropdown-item" @click="go('/admin/salas')"><LayoutGrid class="w-3.5 h-3.5" /> Ver salas</button>
                 </template>
                 <button class="dropdown-item logout" @click="logout"><LogOut class="w-3.5 h-3.5" /> Cerrar sesion</button>
               </div>

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { apiClient } from "../lib/api-client";
 
+const cineSalaSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  nombre: z.string(),
+  filas: z.number().optional(),
+  columnas: z.number().optional(),
+});
+
 export const cineSchema = z.object({
   id: z.union([z.string(), z.number()]),
   nombre: z.string(),
@@ -8,6 +15,7 @@ export const cineSchema = z.object({
   id_ciudad: z.union([z.string(), z.number()]).optional(),
   activo: z.boolean().optional(),
   created_at: z.string().optional(),
+  salas: z.array(cineSalaSchema).optional(),
 });
 export type Cine = z.infer<typeof cineSchema>;
 

@@ -85,6 +85,7 @@ const router = useRouter();
 const catalog = useCatalogStore();
 const session = useSessionStore();
 const { formatDate, imageUrl } = useFormat();
+const { fromUTC } = useFormat();
 
 const isLoading = ref(false);
 const funciones = ref<FuncionItem[]>([]);
@@ -97,12 +98,11 @@ const cityFilter = ref("");
 const cinemaFilter = ref("");
 
 function dateFrom(fecha_hora: string) {
-  return fecha_hora.split("T")[0] ?? fecha_hora;
+  return fromUTC(fecha_hora).date;
 }
 
 function timeFrom(fecha_hora: string) {
-  const raw = fecha_hora.split("T")[1];
-  return raw ? raw.slice(0, 5) : "";
+  return fromUTC(fecha_hora).time;
 }
 
 const availableFunciones = computed(() =>
@@ -110,7 +110,9 @@ const availableFunciones = computed(() =>
     const movie = catalog.movieById(item.movieId);
     const cinema = catalog.cinemaById(item.cinemaId);
     const query = search.value.toLowerCase();
+    const isFuture = new Date(item.fecha_hora).getTime() > Date.now();
     return (
+      isFuture &&
       (!query || movie?.title.toLowerCase().includes(query)) &&
       (!genreFilter.value || movie?.genre === genreFilter.value) &&
       (!languageFilter.value || movie?.language === languageFilter.value) &&

@@ -7,7 +7,9 @@
       </div>
     </div>
 
-    <div class="cinema-groups">
+    <div v-if="isLoading" class="empty-state card">Cargando funciones...</div>
+
+    <div v-else class="cinema-groups">
       <section v-for="group in todayShowtimeGroups" :key="group.cinema.id" class="cinema-group">
         <div class="group-heading">
           <div>
@@ -36,17 +38,26 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { useCatalogStore } from "../../stores/catalog";
 import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
 
-const route = useRoute();
 const router = useRouter();
 const catalog = useCatalogStore();
 const { movieFor, priceFor } = useCatalogHelpers();
 const { money, formatDate } = useFormat();
+
+const isLoading = ref(false);
+
+onMounted(async () => {
+  console.log("[SellFunctionsView] mounted, showtimes:", catalog.showtimes.length);
+  isLoading.value = true;
+  await catalog.loadAllShowtimes();
+  console.log("[SellFunctionsView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
+  isLoading.value = false;
+});
 
 const todayShowtimes = computed(() =>
   catalog.showtimes.filter(

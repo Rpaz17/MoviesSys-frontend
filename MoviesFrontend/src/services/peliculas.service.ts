@@ -6,11 +6,11 @@ import { apiClient } from "../lib/api-client";
 export const peliculaSchema = z.object({
   id: z.union([z.string(), z.number()]),
   titulo: z.string(),
-  sinopsis: z.string(),
+  sinopsis: z.string().nullable().optional(),
   poster_url: z.string().nullable(),
   id_idioma: z.union([z.string(), z.number()]).nullable().optional(),
   id_genero: z.union([z.string(), z.number()]).nullable().optional(),
-  fecha_estreno: z.string(),
+  fecha_estreno: z.string().nullable().optional(),
   activo: z.boolean().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
@@ -33,7 +33,7 @@ export const generoSchema = z.object({
 export type Genero = z.infer<typeof generoSchema>;
 
 export const createPeliculaInputSchema = z.object({
-  titulo: z.string().min(1),
+  titulo: z.string().min(1).max(200),
   sinopsis: z.string(),
   poster_url: z.string(),
   idioma: z.string().optional(),
@@ -44,7 +44,7 @@ export const createPeliculaInputSchema = z.object({
 export type CreatePeliculaInput = z.infer<typeof createPeliculaInputSchema>;
 
 export const updatePeliculaInputSchema = z.object({
-  titulo: z.string().optional(),
+  titulo: z.string().min(1).max(200).optional(),
   sinopsis: z.string().optional(),
   poster_url: z.string().optional(),
   fecha_estreno: z.string().optional(),
@@ -53,11 +53,6 @@ export const updatePeliculaInputSchema = z.object({
   activo: z.boolean().optional(),
 });
 export type UpdatePeliculaInput = z.infer<typeof updatePeliculaInputSchema>;
-
-export const uploadPosterInputSchema = z.object({
-  posterUrl: z.string().url(),
-});
-export type UploadPosterInput = z.infer<typeof uploadPosterInputSchema>;
 
 const cineEnFuncionSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -111,14 +106,6 @@ export const peliculasService = {
     payload: UpdatePeliculaInput,
   ): Promise<Pelicula> {
     const { data } = await apiClient.put(`/peliculas/${id}`, payload);
-    return peliculaSchema.parse(data);
-  },
-
-  async uploadPoster(
-    id: number | string,
-    payload: UploadPosterInput,
-  ): Promise<Pelicula> {
-    const { data } = await apiClient.post(`/peliculas/${id}/poster`, payload);
     return peliculaSchema.parse(data);
   },
 
