@@ -25,34 +25,37 @@ export const useCatalogStore = defineStore("catalog", () => {
 
   async function loadFromAPI(): Promise<void> {
     try {
-      const [data, idiomas, generos, cineData, ciudadData, salaData] = await Promise.all([
-        peliculasService
-          .search()
-          .catch(
-            () => [] as Awaited<ReturnType<typeof peliculasService.search>>,
-          ),
-        peliculasService
-          .getIdiomas()
-          .catch(
-            () => [] as Awaited<ReturnType<typeof peliculasService.getIdiomas>>,
-          ),
-        peliculasService
-          .getGeneros()
-          .catch(
-            () => [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>,
-          ),
-        cinesService
-          .getAll()
-          .catch(() => [] as Awaited<ReturnType<typeof cinesService.getAll>>),
-        ciudadesService
-          .getAll()
-          .catch(
-            () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
-          ),
-        salasService
-          .getAll()
-          .catch(() => [] as Awaited<ReturnType<typeof salasService.getAll>>),
-      ]);
+      const [data, idiomas, generos, cineData, ciudadData, salaData] =
+        await Promise.all([
+          peliculasService
+            .search()
+            .catch(
+              () => [] as Awaited<ReturnType<typeof peliculasService.search>>,
+            ),
+          peliculasService
+            .getIdiomas()
+            .catch(
+              () =>
+                [] as Awaited<ReturnType<typeof peliculasService.getIdiomas>>,
+            ),
+          peliculasService
+            .getGeneros()
+            .catch(
+              () =>
+                [] as Awaited<ReturnType<typeof peliculasService.getGeneros>>,
+            ),
+          cinesService
+            .getAll()
+            .catch(() => [] as Awaited<ReturnType<typeof cinesService.getAll>>),
+          ciudadesService
+            .getAll()
+            .catch(
+              () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
+            ),
+          salasService
+            .getAll()
+            .catch(() => [] as Awaited<ReturnType<typeof salasService.getAll>>),
+        ]);
 
       idiomaNames.value = new Map(idiomas.map((i) => [String(i.id), i.nombre]));
       generoNames.value = new Map(generos.map((g) => [String(g.id), g.nombre]));
@@ -285,10 +288,39 @@ export const useCatalogStore = defineStore("catalog", () => {
     );
   }
 
-  function toggleMovieStatus(id: string) {
-    movies.value = movies.value.map((movie) =>
-      movie.id === id ? { ...movie, activo: !movie.activo } : movie,
+  async function toggleMovieStatus(id: string): Promise<void> {
+    const movie = movies.value.find((item) => item.id === id);
+
+    if (!movie) {
+      throw new Error("Película no encontrada.");
+    }
+
+    const previousStatus = movie.activo;
+    const nextStatus = !previousStatus;
+    movies.value = movies.value.map((item) =>
+      item.id === id ? { ...item, activo: nextStatus } : item,
     );
+
+    try {
+      const updatedMovie = await peliculasService.update(id, {
+        activo: nextStatus,
+      });
+
+      movies.value = movies.value.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              activo: updatedMovie.activo ?? nextStatus,
+            }
+          : item,
+      );
+    } catch (error) {
+      movies.value = movies.value.map((item) =>
+        item.id === id ? { ...item, activo: previousStatus } : item,
+      );
+
+      throw error;
+    }
   }
 
   function upsertCinema(next: Cinema) {
@@ -320,7 +352,11 @@ export const useCatalogStore = defineStore("catalog", () => {
     }
   }
 
-  async function loadCustomers(params?: { nombre?: string; email?: string; estado?: string }): Promise<void> {
+  async function loadCustomers(params?: {
+    nombre?: string;
+    email?: string;
+    estado?: string;
+  }): Promise<void> {
     try {
       const data = await authService.findAllUsers(params);
       customers.value = data.map((u) => {
@@ -419,6 +455,36 @@ export const useCatalogStore = defineStore("catalog", () => {
     await loadFromAPI();
     return { warning: sala.advertencia };
   }
+  async function loadAllMovies(): Promise<void> {
+    const [data, idiomas, generos] = await Promise.all([
+      peliculasService.getAll(),
+      peliculasService.getIdiomas(),
+      peliculasService.getGeneros(),
+    ]);
+
+    idiomaNames.value = new Map(
+      idiomas.map((idioma) => [String(idioma.id), idioma.nombre]),
+    );
+
+    generoNames.value = new Map(
+      generos.map((genero) => [String(genero.id), genero.nombre]),
+    );
+
+    movies.value = data.map((movie) => ({
+      id: String(movie.id),
+      title: movie.titulo,
+      genre: generoNames.value.get(String(movie.id_genero)) ?? "Desconocido",
+      language: idiomaNames.value.get(String(movie.id_idioma)) ?? "Desconocido",
+      rating: "NR",
+      duration: "120 min",
+      releaseDate: movie.fecha_estreno ?? "",
+      director: "",
+      activo: movie.activo !== false,
+      reservations: 0,
+      revenue: "$0",
+      img: movie.poster_url ?? "",
+    }));
+  }
 
   return {
     movies,
@@ -450,5 +516,6 @@ export const useCatalogStore = defineStore("catalog", () => {
     reactivateCine,
     createRoom,
     updateRoom,
+    loadAllMovies,
   };
 });

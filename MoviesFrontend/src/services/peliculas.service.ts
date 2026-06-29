@@ -131,4 +131,10 @@ export const peliculasService = {
     );
     return z.array(funcionCineSchema).parse(data);
   },
+
+async getAll(): Promise<Pelicula[]> {
+  const { data } = await apiClient.get<Pelicula[]>('/peliculas/all');
+
+  return z.array(peliculaSchema).parse(data);
+}
 };
