@@ -3,6 +3,7 @@ import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { CheckCircle2, CreditCard, Save } from "lucide-vue-next";
 import { useSessionStore } from "../../stores/session";
+import { digitsOnly, formatCardNumber, formatExpiry, validateCard } from "../../utils/card-validation";
 
 const router = useRouter();
 const session = useSessionStore();
@@ -21,8 +22,26 @@ function savePaymentMethod() {
     error.value = "Completa los datos de la tarjeta.";
     return;
   }
+  const validationError = validateCard(form.cardNumber, form.cardExpiry, form.cardCvv);
+  if (validationError) {
+    error.value = validationError;
+    saved.value = false;
+    return;
+  }
   error.value = "";
   saved.value = true;
+}
+
+function onCardNumberInput(event: Event) {
+  form.cardNumber = formatCardNumber((event.target as HTMLInputElement).value);
+}
+
+function onExpiryInput(event: Event) {
+  form.cardExpiry = formatExpiry((event.target as HTMLInputElement).value);
+}
+
+function onCvcInput(event: Event) {
+  form.cardCvv = digitsOnly((event.target as HTMLInputElement).value).slice(0, 4);
 }
 </script>
 
@@ -42,9 +61,9 @@ function savePaymentMethod() {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input v-model="form.cardName" class="input md:col-span-2" placeholder="Nombre en tarjeta" />
-          <input v-model="form.cardNumber" class="input md:col-span-2" inputmode="numeric" placeholder="Numero de tarjeta" />
-          <input v-model="form.cardExpiry" class="input" placeholder="MM/AA" />
-          <input v-model="form.cardCvv" class="input" inputmode="numeric" placeholder="CVV" />
+          <input :value="form.cardNumber" class="input md:col-span-2" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="Numero de tarjeta" @input="onCardNumberInput" />
+          <input :value="form.cardExpiry" class="input" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA" @input="onExpiryInput" />
+          <input :value="form.cardCvv" class="input" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVC" @input="onCvcInput" />
           <div class="card-preview md:col-span-2">
             <span>Tarjeta principal</span>
             <strong>{{ form.cardNumber ? `**** **** **** ${form.cardNumber.slice(-4)}` : "Sin tarjeta guardada" }}</strong>

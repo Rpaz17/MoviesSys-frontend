@@ -19,7 +19,10 @@
           <label class="field">Género<input v-model="movieForm.genre" class="input" list="movie-genres" required /></label>
           <label class="field">Idioma<input v-model="movieForm.language" class="input" list="movie-languages" required /></label>
           <label class="field">Clasificación<input v-model="movieForm.rating" class="input" required /></label>
-          <label class="field">Duración<input v-model="movieForm.duration" class="input" required /></label>
+          <label class="field">Duración
+            <input v-model="movieForm.duration" class="input" type="time" min="00:01" max="12:00" step="60" required />
+            <small>Formato HH:MM</small>
+          </label>
           <label class="field">Estreno<input v-model="movieForm.releaseDate" class="input" type="date" required /></label>
           <label class="field">Director<input v-model="movieForm.director" class="input" required /></label>
           <label class="field">Estado
@@ -94,7 +97,7 @@ const defaultMovieForm: MovieFormState = {
   genre: "",
   language: "",
   rating: "",
-  duration: "",
+  duration: "02:00",
   releaseDate: "",
   director: "",
   activo: true,
@@ -182,6 +185,12 @@ async function saveMovie() {
   const genreId = findCatalogId(generos.value, movieForm.genre);
   const languageId = findCatalogId(idiomas.value, movieForm.language);
   const posterUrl = getPosterUrlForBackend();
+
+  if (!/^(?:0[0-9]|1[0-2]):[0-5][0-9]$/.test(movieForm.duration) || movieForm.duration === "00:00") {
+    feedbackType.value = "error";
+    feedback.value = "La duración debe tener formato HH:MM y ser mayor que 00:00.";
+    return;
+  }
 
   if (!session.user?.id) {
     feedbackType.value = "error";

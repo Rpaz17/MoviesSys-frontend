@@ -1,6 +1,6 @@
 export function useFormat() {
   function money(value: number) {
-    return new Intl.NumberFormat("es-HN", { style: "currency", currency: "USD" }).format(value);
+    return new Intl.NumberFormat("es-HN", { style: "currency", currency: "HNL" }).format(value);
   }
 
   function formatDate(dateStr: string) {
