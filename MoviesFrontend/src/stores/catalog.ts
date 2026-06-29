@@ -7,8 +7,10 @@ import { ciudadesService } from "../services/ciudades.services";
 import { cinesService } from "../services/cines.service";
 import { salasService } from "../services/salas.service";
 import { funcionesService } from "../services/funciones.service";
+import { useFormat } from "../composables/use-format";
 
 export const useCatalogStore = defineStore("catalog", () => {
+  const { fromUTC } = useFormat();
   const movies = ref<CatalogMovie[]>([]);
   const cinemas = ref<Cinema[]>([]);
   const rooms = ref<Room[]>([]);
@@ -177,8 +179,7 @@ export const useCatalogStore = defineStore("catalog", () => {
           });
         }
 
-        const [date, timeRaw] = f.fecha_hora.split("T");
-        const time = timeRaw ? timeRaw.slice(0, 5) : "";
+        const { date, time } = fromUTC(f.fecha_hora);
 
         allFunciones.push({
           id: String(f.id),
@@ -260,8 +261,7 @@ export const useCatalogStore = defineStore("catalog", () => {
           });
         }
 
-        const [date, timeRaw] = f.fecha_hora.split("T");
-        const time = timeRaw ? timeRaw.slice(0, 5) : "";
+        const { date, time } = fromUTC(f.fecha_hora);
 
         allFunciones.push({
           id: String(f.id),

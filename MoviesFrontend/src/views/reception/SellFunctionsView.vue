@@ -52,13 +52,11 @@ const { money, formatDate } = useFormat();
 const isLoading = ref(false);
 
 onMounted(async () => {
-  console.log("[SellFunctionsView] mounted, showtimes:", catalog.showtimes.length, "movies:", catalog.movies.length);
-  if (catalog.showtimes.length === 0 || catalog.movies.length === 0) {
-    isLoading.value = true;
-    await catalog.loadAllShowtimes();
-    console.log("[SellFunctionsView] post loadAllShowtimes, showtimes:", catalog.showtimes.length, "movies:", catalog.movies.length);
-    isLoading.value = false;
-  }
+  console.log("[SellFunctionsView] mounted, showtimes:", catalog.showtimes.length);
+  isLoading.value = true;
+  await catalog.loadAllShowtimes();
+  console.log("[SellFunctionsView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
+  isLoading.value = false;
 });
 
 const todayShowtimes = computed(() =>

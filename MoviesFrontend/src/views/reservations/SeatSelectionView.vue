@@ -197,6 +197,7 @@ const reservationsStore = useReservationsStore();
 const session = useSessionStore();
 const { reservations, coupons } = storeToRefs(reservationsStore);
 const { money, formatDate } = useFormat();
+const { fromUTC } = useFormat();
 const { asientos, fetchAsientos, bloquearAsiento, liberarAsiento, isPending } = useFunciones();
 
 // ── Route context ──────────────────────────────────────────────────────────────
@@ -205,14 +206,8 @@ const movieId = computed(() => String(route.query.movieId ?? ""));
 const cinemaId = computed(() => String(route.query.cinemaId ?? ""));
 const roomName = computed(() => String(route.query.room ?? "Sala"));
 const fechaHora = computed(() => String(route.query.fecha ?? ""));
-const showtimeDate = computed(() => {
-    const d = fechaHora.value.split("T")[0];
-    return d ?? fechaHora.value;
-});
-const showtimeTime = computed(() => {
-    const raw = fechaHora.value.split("T")[1];
-    return raw ? raw.slice(0, 5) : "";
-});
+const showtimeDate = computed(() => fromUTC(fechaHora.value).date);
+const showtimeTime = computed(() => fromUTC(fechaHora.value).time);
 
 const movie = computed(() => catalog.movieById(movieId.value));
 const cinema = computed(() => catalog.cinemaById(cinemaId.value));

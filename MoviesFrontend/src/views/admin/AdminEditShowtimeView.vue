@@ -36,12 +36,14 @@ import { reactive, computed, watch, ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
+import { useFormat } from "../../composables/use-format";
 import { funcionesService } from "../../services/funciones.service";
 import type { Showtime } from "../../types";
 
 const route = useRoute();
 const router = useRouter();
 const catalog = useCatalogStore();
+const { toUTC } = useFormat();
 
 const id = String(route.params.id);
 const isSaving = ref(false);
@@ -80,7 +82,7 @@ async function saveEditedShowtime() {
     await funcionesService.edit(id, {
       id_pelicula: showtimeForm.movieId,
       id_sala: showtimeForm.roomId,
-      fecha_hora: `${showtimeForm.date}T${showtimeForm.time}:00`,
+      fecha_hora: toUTC(showtimeForm.date, showtimeForm.time),
     });
     await catalog.loadAllShowtimes();
     router.push("/admin/funciones");

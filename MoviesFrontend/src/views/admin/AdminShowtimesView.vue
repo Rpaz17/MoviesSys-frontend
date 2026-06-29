@@ -71,6 +71,7 @@ import { useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
 import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
+import { useFormat } from "../../composables/use-format";
 import { funcionesService } from "../../services/funciones.service";
 import CancelShowtimeModal from "../../components/CancelShowtimeModal.vue";
 import type { Showtime } from "../../types";
@@ -78,6 +79,7 @@ import type { Showtime } from "../../types";
 const router = useRouter();
 const catalog = useCatalogStore();
 const { movieFor, cinemaFor, roomFor } = useCatalogHelpers();
+const { toUTC } = useFormat();
 
 const editingShowtimeId = ref("");
 const cancelShowtimeTarget = ref<Showtime | null>(null);
@@ -126,10 +128,8 @@ function resetShowtime() {
 
 onMounted(async () => {
   console.log("[AdminShowtimesView] mounted, showtimes:", catalog.showtimes.length);
-  if (catalog.showtimes.length === 0 || catalog.movies.length === 0) {
-    await catalog.loadAllShowtimes();
-    console.log("[AdminShowtimesView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
-  }
+  await catalog.loadAllShowtimes();
+  console.log("[AdminShowtimesView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
   resetShowtime();
 });
 
@@ -141,7 +141,7 @@ async function saveShowtime() {
     await funcionesService.create({
       id_pelicula: showtimeForm.movieId,
       id_sala: showtimeForm.roomId,
-      fecha_hora: `${showtimeForm.date}T${showtimeForm.time}:00`,
+      fecha_hora: toUTC(showtimeForm.date, showtimeForm.time),
     });
     await catalog.loadAllShowtimes();
     resetShowtime();

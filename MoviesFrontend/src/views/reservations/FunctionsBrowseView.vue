@@ -85,6 +85,7 @@ const router = useRouter();
 const catalog = useCatalogStore();
 const session = useSessionStore();
 const { formatDate, imageUrl } = useFormat();
+const { fromUTC } = useFormat();
 
 const isLoading = ref(false);
 const funciones = ref<FuncionItem[]>([]);
@@ -97,12 +98,11 @@ const cityFilter = ref("");
 const cinemaFilter = ref("");
 
 function dateFrom(fecha_hora: string) {
-  return fecha_hora.split("T")[0] ?? fecha_hora;
+  return fromUTC(fecha_hora).date;
 }
 
 function timeFrom(fecha_hora: string) {
-  const raw = fecha_hora.split("T")[1];
-  return raw ? raw.slice(0, 5) : "";
+  return fromUTC(fecha_hora).time;
 }
 
 const availableFunciones = computed(() =>

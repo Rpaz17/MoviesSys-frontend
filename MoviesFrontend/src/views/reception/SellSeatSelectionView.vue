@@ -64,9 +64,31 @@
 
         <template v-if="paymentMethod === 'tarjeta'">
           <div class="payment-grid">
-            <input v-model="cardNumber" class="input" placeholder="Numero de tarjeta" />
-            <input v-model="cardExpiry" class="input" placeholder="MM/AA" />
-            <input v-model="cardCvv" class="input" placeholder="CVV" />
+            <input
+              :value="cardNumber"
+              class="input"
+              placeholder="Numero de tarjeta"
+              inputmode="numeric"
+              maxlength="19"
+              @input="onCardNumberInput"
+            />
+            <input
+              :value="cardExpiry"
+              class="input"
+              placeholder="MM/AA"
+              inputmode="numeric"
+              maxlength="5"
+              @input="onCardExpiryInput"
+            />
+            <input
+              :value="cardCvv"
+              class="input"
+              placeholder="CVV"
+              inputmode="numeric"
+              maxlength="4"
+              @input="onCardCvvInput"
+            />
+            <p v-if="cardError" class="error-msg">{{ cardError }}</p>
           </div>
         </template>
 
@@ -147,10 +169,8 @@ onMounted(async () => {
   isLoading.value = true;
   console.log("[SellSeatSelectionView] mounted, showtimeId:", showtimeId.value);
 
-  if (catalog.showtimes.length === 0 || catalog.movies.length === 0) {
-    await catalog.loadAllShowtimes();
-    console.log("[SellSeatSelectionView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
-  }
+  await catalog.loadAllShowtimes();
+  console.log("[SellSeatSelectionView] post loadAllShowtimes, showtimes:", catalog.showtimes.length);
 
   await reservationsStore.loadFromAPI();
   console.log("[SellSeatSelectionView] reservations loaded:", reservations.value.length);
@@ -184,6 +204,7 @@ const cardCvv = ref("");
 const isConfirming = ref(false);
 const sellError = ref("");
 const sellingError = ref("");
+const cardError = ref("");
 
 const sellMovie = computed(() => (sellShowtime.value ? movieFor(sellShowtime.value.movieId) : undefined));
 const sellCinema = computed(() => (sellShowtime.value ? cinemaFor(sellShowtime.value.cinemaId) : undefined));
@@ -244,8 +265,40 @@ const sellTotal = computed(() =>
 const canSell = computed(() => {
   if (sellSeats.value.length === 0 || sellCustomerName.value.trim().length === 0) return false;
   if (paymentMethod.value === "efectivo") return cashReceived.value >= sellTotal.value;
-  return !!(cardNumber.value && cardExpiry.value && cardCvv.value);
+  return !!(cardNumber.value && cardExpiry.value && cardCvv.value) && !cardError.value;
 });
+
+function onCardNumberInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 16);
+  cardNumber.value = raw.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+  cardError.value = raw.length > 0 && raw.length < 16 ? "La tarjeta debe tener 16 digitos." : "";
+}
+
+function onCardExpiryInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+  if (raw.length >= 2) {
+    cardExpiry.value = raw.slice(0, 2) + "/" + raw.slice(2);
+  } else {
+    cardExpiry.value = raw;
+  }
+  if (raw.length === 4) {
+    const month = parseInt(raw.slice(0, 2), 10);
+    const year = parseInt(raw.slice(2), 10);
+    if (month < 1 || month > 12) cardError.value = "Mes invalido.";
+    else if (year < new Date().getFullYear() % 100) cardError.value = "La tarjeta ha expirado.";
+    else cardError.value = "";
+  } else if (raw.length > 0 && raw.length < 4) {
+    cardError.value = "Fecha incompleta.";
+  } else {
+    cardError.value = "";
+  }
+}
+
+function onCardCvvInput(e: Event) {
+  const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+  cardCvv.value = raw;
+  cardError.value = raw.length > 0 && raw.length < 3 ? "El CVV debe tener al menos 3 digitos." : "";
+}
 
 async function toggleSellSeat(seat: string) {
   if (sellSeats.value.includes(seat)) {
@@ -375,6 +428,7 @@ function closeSellReceipt() {
   cardCvv.value = "";
   paymentMethod.value = "efectivo";
   sellingError.value = "";
+  cardError.value = "";
   router.push("/recepcion/vender");
 }
 </script>
