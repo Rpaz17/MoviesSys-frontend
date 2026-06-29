@@ -14,7 +14,9 @@
         </div>
       </div>
 
-      <div class="table-card card">
+      <div v-if="isLoading" class="empty-state card">Cargando salas...</div>
+
+      <div v-else class="table-card card">
         <table>
           <thead><tr><th>Nombre</th><th>Cine</th><th>Tipo</th><th>Capacidad</th><th>Estado</th><th>Funciones</th><th>Ocupación</th><th>Acciones</th></tr></thead>
           <tbody>
@@ -36,12 +38,22 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
 
 const router = useRouter();
 const catalog = useCatalogStore();
+const isLoading = ref(false);
+
+onMounted(async () => {
+  if (catalog.rooms.length === 0) {
+    isLoading.value = true;
+    await catalog.loadFromAPI();
+    isLoading.value = false;
+  }
+});
 </script>
 
 <style scoped>

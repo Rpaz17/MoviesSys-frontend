@@ -25,7 +25,7 @@ export const useCatalogStore = defineStore("catalog", () => {
 
   async function loadFromAPI(): Promise<void> {
     try {
-      const [data, idiomas, generos, cineData, ciudadData, salaData] = await Promise.all([
+      const [data, idiomas, generos, cineData, ciudadData] = await Promise.all([
         peliculasService
           .search()
           .catch(
@@ -49,9 +49,6 @@ export const useCatalogStore = defineStore("catalog", () => {
           .catch(
             () => [] as Awaited<ReturnType<typeof ciudadesService.getAll>>,
           ),
-        salasService
-          .getAll()
-          .catch(() => [] as Awaited<ReturnType<typeof salasService.getAll>>),
       ]);
 
       idiomaNames.value = new Map(idiomas.map((i) => [String(i.id), i.nombre]));
@@ -88,19 +85,39 @@ export const useCatalogStore = defineStore("catalog", () => {
         img: "",
       }));
 
-      rooms.value = salaData.map((s) => {
-        const cinemaId = String(s.id_cine);
-        const cinema = cinemas.value.find((c) => c.id === cinemaId);
+      const cineDetails = await Promise.all(
+        cineData.map((c) =>
+          cinesService.getById(c.id).catch(() => null),
+        ),
+      );
+
+      rooms.value = [];
+      const allSalas: { id: string; nombre: string; filas: number; columnas: number; id_cine: string }[] = [];
+      for (const cine of cineDetails) {
+        if (!cine?.salas) continue;
+        for (const s of cine.salas) {
+          allSalas.push({
+            id: String(s.id),
+            nombre: s.nombre,
+            filas: s.filas ?? 0,
+            columnas: s.columnas ?? 0,
+            id_cine: String(cine.id),
+          });
+        }
+      }
+
+      rooms.value = allSalas.map((s) => {
+        const cinema = cinemas.value.find((c) => c.id === s.id_cine);
         return {
-          id: String(s.id),
+          id: s.id,
           name: s.nombre,
-          cinemaId,
+          cinemaId: s.id_cine,
           cinema: cinema?.name ?? "Desconocido",
           type: "2D" as const,
           rows: s.filas,
           cols: s.columnas,
           status: "activo" as const,
-          functions: s.funciones_activas ?? 0,
+          functions: 0,
           occupancy: 0,
         };
       });

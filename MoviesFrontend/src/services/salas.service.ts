@@ -36,11 +36,6 @@ export const updateSalaInputSchema = z.object({
 export type UpdateSalaInput = z.infer<typeof updateSalaInputSchema>;
 
 export const salasService = {
-  async getAll(): Promise<Sala[]> {
-    const { data } = await apiClient.get<Sala[]>("/cines/salas");
-    return z.array(salaSchema).parse(data);
-  },
-
   async getById(id: number | string): Promise<Sala> {
     const { data } = await apiClient.get<Sala>(`/cines/salas/${id}`);
     return salaSchema.parse(data);
