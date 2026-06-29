@@ -112,17 +112,26 @@
                 </label>
                 <div v-if="paymentMethod === 'tarjeta'" class="payment-grid">
                     <input
-                        v-model="cardNumber"
+                        :value="cardNumber"
                         class="input"
+                        inputmode="numeric"
+                        autocomplete="cc-number"
+                        maxlength="23"
                         placeholder="Número de tarjeta"
+                        @input="onCardNumberInput"
                     />
                     <input
-                        v-model="cardExpiry"
+                        :value="cardExpiry"
                         class="input"
+                        inputmode="numeric"
+                        autocomplete="cc-exp"
+                        maxlength="5"
                         placeholder="MM/AA"
+                        @input="onExpiryInput"
                     />
-                    <input v-model="cardCvv" class="input" placeholder="CVV" />
+                    <input :value="cardCvv" class="input" inputmode="numeric" autocomplete="cc-csc" maxlength="3" placeholder="CVC" @input="onCvcInput" />
                 </div>
+                <p v-if="cardError" class="error-msg">{{ cardError }}</p>
                 <p class="policy-box">
                     Puedes cancelar antes de la función. El reembolso estimado
                     depende de la política configurada y se verá en Mis
@@ -163,6 +172,7 @@ import { useFunciones } from "../../composables/use-funciones";
 import { reservasService } from "../../services/reservas.service";
 import type { Asiento } from "../../services/funciones.service";
 import type { PaymentMethod, Reservation } from "../../types";
+import { digitsOnly, formatCardNumber, formatExpiry, validateCard } from "../../utils/card-validation";
 
 interface SeatItem {
     id: string;
@@ -217,6 +227,10 @@ const isConfirming = ref(false);
 const lockedUntil = ref(0);
 const now = ref(Date.now());
 let timer: number | undefined;
+const cardError = computed(() => {
+    if (paymentMethod.value !== "tarjeta" || (!cardNumber.value && !cardExpiry.value && !cardCvv.value)) return "";
+    return validateCard(cardNumber.value, cardExpiry.value, cardCvv.value);
+});
 
 // ── Derived data ────────────────────────────────────────────────────────────────
 const unitPrice = ref(7);
@@ -235,7 +249,7 @@ const canConfirm = computed(
     () =>
         selectedSeats.value.length > 0 &&
         (paymentMethod.value !== "tarjeta" ||
-            Boolean(cardNumber.value && cardExpiry.value && cardCvv.value)),
+            !cardError.value && Boolean(cardNumber.value && cardExpiry.value && cardCvv.value)),
 );
 
 const gridCols = computed(() =>
@@ -279,6 +293,18 @@ function isReserved(asiento: SeatItem) {
 
 function isSelected(asiento: SeatItem) {
     return selectedSeats.value.includes(asiento.id);
+}
+
+function onCardNumberInput(event: Event) {
+    cardNumber.value = formatCardNumber((event.target as HTMLInputElement).value);
+}
+
+function onExpiryInput(event: Event) {
+    cardExpiry.value = formatExpiry((event.target as HTMLInputElement).value);
+}
+
+function onCvcInput(event: Event) {
+    cardCvv.value = digitsOnly((event.target as HTMLInputElement).value).slice(0, 4);
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────────

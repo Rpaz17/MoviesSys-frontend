@@ -66,12 +66,12 @@ export const useCatalogStore = defineStore("catalog", () => {
         genre: generoNames.value.get(String(m.id_genero)) ?? "Desconocido",
         language: idiomaNames.value.get(String(m.id_idioma)) ?? "Desconocido",
         rating: "NR",
-        duration: "120 min",
+        duration: m.sinopsis.match(/Duración:\s*(\d{2}:\d{2})/i)?.[1] ?? "02:00",
         releaseDate: m.fecha_estreno ?? "",
         director: "",
         activo: m.activo !== false,
         reservations: 0,
-        revenue: "$0",
+        revenue: "L 0.00",
         img: m.poster_url ?? "",
       }));
 

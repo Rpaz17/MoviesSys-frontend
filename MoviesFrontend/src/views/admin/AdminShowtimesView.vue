@@ -29,6 +29,11 @@
               </select></label>
             <label class="field">Fecha<input v-model="showtimeForm.date" class="input" type="date" required /></label>
             <label class="field">Hora<input v-model="showtimeForm.time" class="input" type="time" required /></label>
+            <div class="field schedule-summary">
+              <span>Fin estimado</span>
+              <strong>{{ estimatedEndTime || "Selecciona película y hora" }}</strong>
+              <small>Incluye {{ CLEANING_MINUTES }} minutos de limpieza.</small>
+            </div>
             <label class="field">Formato<select v-model="showtimeForm.format" class="input">
                 <option>2D</option>
                 <option>3D</option>
@@ -84,6 +89,7 @@ const editingShowtimeId = ref("");
 const cancelShowtimeTarget = ref<Showtime | null>(null);
 const saving = ref(false);
 const errorMessage = ref("");
+const CLEANING_MINUTES = 15;
 
 const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" | "status"> & { editingStatus?: AdminStatus }>({
   movieId: "",
@@ -97,6 +103,38 @@ const showtimeForm = reactive<Omit<Showtime, "id" | "reservations" | "revenue" |
 const activeMovies = computed(() => catalog.movies.filter((item) => item.activo));
 const activeCinemas = computed(() => catalog.cinemas.filter((item) => item.status === "activo"));
 const filteredRooms = computed(() => catalog.rooms.filter((room) => room.cinemaId === showtimeForm.cinemaId && room.status === "activo"));
+const selectedMovie = computed(() => catalog.movieById(showtimeForm.movieId));
+
+function durationToMinutes(value = "") {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : 0;
+}
+
+function dateTimeInMinutes(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime() / 60000;
+}
+
+const estimatedEndTime = computed(() => {
+  const duration = durationToMinutes(selectedMovie.value?.duration);
+  if (!showtimeForm.time || !duration) return "";
+  const [hours, minutes] = showtimeForm.time.split(":").map(Number);
+  const end = hours * 60 + minutes + duration + CLEANING_MINUTES;
+  return `${String(Math.floor(end / 60) % 24).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
+});
+
+function hasScheduleConflict() {
+  const duration = durationToMinutes(selectedMovie.value?.duration);
+  if (!duration) return false;
+  const start = dateTimeInMinutes(showtimeForm.date, showtimeForm.time);
+  const end = start + duration + CLEANING_MINUTES;
+  return catalog.showtimes.some((item) => {
+    if (item.id === editingShowtimeId.value || item.roomId !== showtimeForm.roomId || item.status !== "activo") return false;
+    const otherDuration = durationToMinutes(catalog.movieById(item.movieId)?.duration);
+    const otherStart = dateTimeInMinutes(item.date, item.time);
+    const otherEnd = otherStart + otherDuration + CLEANING_MINUTES;
+    return start < otherEnd && end > otherStart;
+  });
+}
 
 watch(() => showtimeForm.cinemaId, () => {
   if (!filteredRooms.value.some((room) => room.id === showtimeForm.roomId)) showtimeForm.roomId = filteredRooms.value[0]?.id ?? "";
@@ -118,6 +156,10 @@ async function saveShowtime() {
 
   if (!showtimeForm.movieId || !showtimeForm.cinemaId || !showtimeForm.roomId || !showtimeForm.date || !showtimeForm.time) {
     errorMessage.value = "Completa todos los campos requeridos.";
+    return;
+  }
+  if (hasScheduleConflict()) {
+    errorMessage.value = `El horario se cruza con otra función, incluyendo ${CLEANING_MINUTES} minutos de limpieza.`;
     return;
   }
 
@@ -245,6 +287,8 @@ span {
   font-size: .8125rem;
   font-weight: 500;
 }
+.schedule-summary strong { color: #f0ece4; }
+.schedule-summary small { color: #7a7590; }
 
 .form-actions {
   display: flex;
