@@ -74,6 +74,23 @@ export function useFunciones() {
     }
   }
 
+  async function liberarAsiento(
+    funcionId: MaybeRefOrGetter<number | string>,
+    asientoId: MaybeRefOrGetter<string>,
+  ): Promise<boolean> {
+    return funcionesService.liberarAsiento(toValue(funcionId), toValue(asientoId));
+  }
+
+  async function getMisBloqueos(
+    funcionId: MaybeRefOrGetter<number | string>,
+  ): Promise<Asiento[]> {
+    try {
+      return await funcionesService.getMisBloqueos(toValue(funcionId));
+    } catch {
+      return [];
+    }
+  }
+
   async function createFuncion(payload: CreateFuncionInput) {
     isPending.value = true;
     error.value = null;
@@ -130,6 +147,8 @@ export function useFunciones() {
     fetchFuncionesDisponibilidad,
     fetchAsientos,
     bloquearAsiento,
+    liberarAsiento,
+    getMisBloqueos,
     createFuncion,
     editFuncion,
     cancelFuncion,

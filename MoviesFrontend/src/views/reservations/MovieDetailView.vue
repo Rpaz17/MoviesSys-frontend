@@ -19,9 +19,8 @@
           <span class="pill">{{ movieData.activo ? 'En cartelera' : 'Inactivo' }}</span>
           <h2>{{ movieData.title }}</h2>
           <p>{{ movieData.genre }} · {{ movieData.language }}</p>
-          <p>{{ movieData.rating }} · {{ movieData.duration }}</p>
-          <p class="muted">Dirigida por {{ movieData.director }}</p>
-          <p class="muted">Estreno: {{ movieData.releaseDate }}</p>
+          <p class="muted">{{ movieData.releaseDate ? 'Estreno: ' + formatDate(movieData.releaseDate) : 'Próximamente' }}</p>
+          <p v-if="movieData.sinopsis" class="muted sinopsis">{{ movieData.sinopsis }}</p>
         </div>
       </aside>
 
@@ -179,6 +178,10 @@ p {
   padding: 1rem 1.125rem;
   display: grid;
   gap: 8px;
+}
+.sinopsis {
+  line-height: 1.6;
+  font-size: .8125rem;
 }
 .movie-functions-panel {
   display: grid;

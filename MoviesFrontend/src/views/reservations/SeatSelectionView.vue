@@ -40,8 +40,9 @@
                             :class="{
                                 reserved: isReserved(asiento),
                                 selected: isSelected(asiento),
+                                'own-blocked': isOwnBlocked(asiento),
+                                'blocked-other': isBlockedByOther(asiento),
                             }"
-                            :disabled="isReserved(asiento)"
                             @click="toggleSeat(asiento)"
                         >
                             {{ asiento.label }}
@@ -53,7 +54,7 @@
                     <span
                         ><i class="seat-dot selected-dot"></i>Seleccionado</span
                     >
-                    <span><i class="seat-dot reserved-dot"></i>Reservado</span>
+                    <span><i class="seat-dot reserved-dot"></i>No disponible</span>
                     <span v-if="blockingError" class="error-msg">{{
                         blockingError
                     }}</span>
@@ -112,16 +113,30 @@
                 </label>
                 <div v-if="paymentMethod === 'tarjeta'" class="payment-grid">
                     <input
-                        v-model="cardNumber"
+                        :value="cardNumber"
                         class="input"
-                        placeholder="Número de tarjeta"
+                        placeholder="Numero de tarjeta"
+                        inputmode="numeric"
+                        maxlength="19"
+                        @input="onCardNumberInput"
                     />
                     <input
-                        v-model="cardExpiry"
+                        :value="cardExpiry"
                         class="input"
                         placeholder="MM/AA"
+                        inputmode="numeric"
+                        maxlength="5"
+                        @input="onCardExpiryInput"
                     />
-                    <input v-model="cardCvv" class="input" placeholder="CVV" />
+                    <input
+                        :value="cardCvv"
+                        class="input"
+                        placeholder="CVV"
+                        inputmode="numeric"
+                        maxlength="4"
+                        @input="onCardCvvInput"
+                    />
+                    <p v-if="cardError" class="error-msg">{{ cardError }}</p>
                 </div>
                 <p class="policy-box">
                     Puedes cancelar antes de la función. El reembolso estimado
@@ -136,7 +151,7 @@
                 >
                     {{
                         isConfirming
-                            ? "Bloqueando asientos..."
+                            ? "Procesando pago..."
                             : "Confirmar y pagar"
                     }}
                 </button>
@@ -171,6 +186,8 @@ interface SeatItem {
     fila: number;
     columna: number;
     estado: string;
+    id_usuario: string | number | null;
+    bloqueado_hasta: string | null;
 }
 
 const route = useRoute();
@@ -180,7 +197,8 @@ const reservationsStore = useReservationsStore();
 const session = useSessionStore();
 const { reservations, coupons } = storeToRefs(reservationsStore);
 const { money, formatDate } = useFormat();
-const { asientos, fetchAsientos, bloquearAsiento, isPending } = useFunciones();
+const { fromUTC } = useFormat();
+const { asientos, fetchAsientos, bloquearAsiento, liberarAsiento, isPending } = useFunciones();
 
 // ── Route context ──────────────────────────────────────────────────────────────
 const showtimeId = computed(() => String(route.params.showtimeId));
@@ -188,17 +206,12 @@ const movieId = computed(() => String(route.query.movieId ?? ""));
 const cinemaId = computed(() => String(route.query.cinemaId ?? ""));
 const roomName = computed(() => String(route.query.room ?? "Sala"));
 const fechaHora = computed(() => String(route.query.fecha ?? ""));
-const showtimeDate = computed(() => {
-    const d = fechaHora.value.split("T")[0];
-    return d ?? fechaHora.value;
-});
-const showtimeTime = computed(() => {
-    const raw = fechaHora.value.split("T")[1];
-    return raw ? raw.slice(0, 5) : "";
-});
+const showtimeDate = computed(() => fromUTC(fechaHora.value).date);
+const showtimeTime = computed(() => fromUTC(fechaHora.value).time);
 
 const movie = computed(() => catalog.movieById(movieId.value));
 const cinema = computed(() => catalog.cinemaById(cinemaId.value));
+const showtimeRoomId = computed(() => catalog.showtimes.find((s) => s.id === showtimeId.value)?.roomId ?? "");
 
 // ── Seat state ──────────────────────────────────────────────────────────────────
 const selectedSeats = ref<string[]>([]); // asiento.id values
@@ -211,12 +224,14 @@ const paymentMethod = ref<PaymentMethod>("tarjeta");
 const cardNumber = ref("");
 const cardExpiry = ref("");
 const cardCvv = ref("");
+const cardError = ref("");
 const confirmation = ref("");
 const confirmationError = ref("");
 const isConfirming = ref(false);
 const lockedUntil = ref(0);
 const now = ref(Date.now());
 let timer: number | undefined;
+let refreshTimer: number | undefined;
 
 // ── Derived data ────────────────────────────────────────────────────────────────
 const unitPrice = ref(7);
@@ -235,7 +250,7 @@ const canConfirm = computed(
     () =>
         selectedSeats.value.length > 0 &&
         (paymentMethod.value !== "tarjeta" ||
-            Boolean(cardNumber.value && cardExpiry.value && cardCvv.value)),
+            (Boolean(cardNumber.value && cardExpiry.value && cardCvv.value) && !cardError.value)),
 );
 
 const gridCols = computed(() =>
@@ -251,7 +266,9 @@ const seatList = computed<SeatItem[]>(() =>
             label: `${String.fromCharCode(64 + a.fila!)}${a.columna!}`,
             fila: a.fila!,
             columna: a.columna!,
-            estado: a.estado ?? "disponible",
+            estado: normalizeEstado(a.estado ?? "disponible"),
+            id_usuario: a.id_usuario ?? null,
+            bloqueado_hasta: a.bloqueado_hasta ?? null,
         }))
         .sort((a, b) => a.fila - b.fila || a.columna - b.columna),
 );
@@ -270,15 +287,74 @@ const lockCountdown = computed(() => {
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────
+const currentUserId = computed(() => session.user?.id ?? "");
+
+function normalizeEstado(estado: string): string {
+    const e = estado.toLowerCase();
+    if (e === "blocked" || e === "bloqueado") return "bloqueado";
+    if (e === "reserved" || e === "reservado" || e === "occupied" || e === "ocupado") return "reservado";
+    if (e === "available" || e === "disponible") return "disponible";
+    return estado;
+}
+
 function isReserved(asiento: SeatItem) {
     return (
         asiento.estado !== "disponible" &&
+        asiento.estado !== "bloqueado" &&
+        !selectedSeats.value.includes(asiento.id)
+    );
+}
+
+function isOwnBlocked(asiento: SeatItem) {
+    return (
+        asiento.estado === "bloqueado" &&
+        String(asiento.id_usuario) === currentUserId.value &&
+        !selectedSeats.value.includes(asiento.id)
+    );
+}
+
+function isBlockedByOther(asiento: SeatItem) {
+    return (
+        asiento.estado === "bloqueado" &&
+        String(asiento.id_usuario) !== currentUserId.value &&
         !selectedSeats.value.includes(asiento.id)
     );
 }
 
 function isSelected(asiento: SeatItem) {
     return selectedSeats.value.includes(asiento.id);
+}
+
+function onCardNumberInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 16);
+    cardNumber.value = raw.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+    cardError.value = raw.length > 0 && raw.length < 16 ? "La tarjeta debe tener 16 digitos." : "";
+}
+
+function onCardExpiryInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+    if (raw.length >= 2) {
+        cardExpiry.value = raw.slice(0, 2) + "/" + raw.slice(2);
+    } else {
+        cardExpiry.value = raw;
+    }
+    if (raw.length === 4) {
+        const month = parseInt(raw.slice(0, 2), 10);
+        const year = parseInt(raw.slice(2), 10);
+        if (month < 1 || month > 12) cardError.value = "Mes invalido.";
+        else if (year < new Date().getFullYear() % 100) cardError.value = "La tarjeta ha expirado.";
+        else cardError.value = "";
+    } else if (raw.length > 0 && raw.length < 4) {
+        cardError.value = "Fecha incompleta.";
+    } else {
+        cardError.value = "";
+    }
+}
+
+function onCardCvvInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+    cardCvv.value = raw;
+    cardError.value = raw.length > 0 && raw.length < 3 ? "El CVV debe tener al menos 3 digitos." : "";
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────────
@@ -309,16 +385,19 @@ onMounted(async () => {
             router.push("/reservas/funciones");
         }
     }, 1000);
+
+    refreshTimer = window.setInterval(async () => {
+        await fetchAsientos(showtimeId.value);
+    }, 13000);
 });
 
 onUnmounted(() => {
     if (timer) window.clearInterval(timer);
+    if (refreshTimer) window.clearInterval(refreshTimer);
 });
 
-// ── Seat toggle (local only — block happens on purchase) ────────────────────────
-function toggleSeat(asiento: SeatItem) {
-    if (isReserved(asiento)) return;
-
+// ── Seat toggle (blocks via API on select, liberates on deselect) ──────────────
+async function toggleSeat(asiento: SeatItem) {
     if (selectedSeats.value.includes(asiento.id)) {
         selectedSeats.value = selectedSeats.value.filter(
             (id) => id !== asiento.id,
@@ -326,10 +405,31 @@ function toggleSeat(asiento: SeatItem) {
         if (selectedSeats.value.length === 0) {
             lockedUntil.value = 0;
         }
+        blockingError.value = "";
+        liberarAsiento(showtimeId.value, asiento.id_asiento);
         return;
     }
 
+    const blocked = await bloquearAsiento(showtimeId.value, asiento.id_asiento);
+    console.log("toggleSeat bloqueo:", { label: asiento.label, id_asiento: asiento.id_asiento, result: blocked });
+    if (!blocked) {
+        blockingError.value = `El asiento ${asiento.label} ya no esta disponible.`;
+        const idx = asientos.value.findIndex((a) => a.id === asiento.id);
+        if (idx >= 0) {
+            asientos.value[idx] = { ...asientos.value[idx], estado: "reservado" };
+        }
+        return;
+    }
+
+    blockingError.value = "";
     selectedSeats.value = [...selectedSeats.value, asiento.id];
+
+    if (asiento.estado !== "disponible") {
+        const idx = asientos.value.findIndex((a) => a.id === asiento.id);
+        if (idx >= 0) {
+            asientos.value[idx] = { ...asientos.value[idx], estado: "disponible" };
+        }
+    }
 
     if (selectedSeats.value.length === 1) {
         lockedUntil.value = Date.now() + 5 * 60 * 1000;
@@ -433,12 +533,13 @@ async function confirmReservation() {
     // 5. Save locally and navigate
     const reservation: Reservation = {
         id: String(reservaCreada.id),
+      apiId: Number(reservaCreada.id),
         customerName: session.user.name,
         customerEmail: session.user.email,
         movieId: movieId.value,
         showtimeId: showtimeId.value,
         cinemaId: cinemaId.value,
-        roomId: showtimeId.value,
+        roomId: showtimeRoomId.value,
         date: showtimeDate.value,
         time: showtimeTime.value,
         seats: [...selectedSeatLabels.value],
@@ -582,6 +683,16 @@ p {
     cursor: not-allowed;
     border-color: rgba(200, 60, 60, 0.2);
 }
+.seat.own-blocked {
+    background: rgba(200, 169, 110, 0.15);
+    color: #c8a96e;
+    border-color: rgba(200, 169, 110, 0.3);
+}
+.seat.blocked-other {
+    background: rgba(200, 60, 60, 0.18);
+    color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(200, 60, 60, 0.2);
+}
 .legend {
     display: flex;
     gap: 14px;
@@ -598,6 +709,10 @@ p {
     margin-right: 5px;
     vertical-align: -1px;
     border: 1px solid rgba(200, 169, 110, 0.2);
+}
+.own-dot {
+    background: rgba(200, 169, 110, 0.3);
+    border-color: rgba(200, 169, 110, 0.5);
 }
 .selected-dot {
     background: #c8a96e;

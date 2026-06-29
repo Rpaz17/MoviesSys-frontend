@@ -4,7 +4,7 @@ import { useCatalogHelpers } from "../composables/use-catalog-helpers";
 import { useFormat } from "../composables/use-format";
 import type { Reservation, Showtime } from "../types";
 
-const props = defineProps<{ receipt: Reservation; showtime: Showtime | null; cashReceived: number }>();
+const props = defineProps<{ receipt: Reservation; showtime: Showtime | null; cashReceived: number; paymentMethod: string }>();
 const emit = defineEmits<{ close: [] }>();
 
 const { movieFor, cinemaFor, roomFor } = useCatalogHelpers();
@@ -30,8 +30,13 @@ const sellRoom = computed(() => props.showtime ? roomFor(props.showtime.roomId) 
       <div class="receipt-row"><span>Asientos</span><strong>{{ receipt.seats.join(", ") }}</strong></div>
       <div class="receipt-divider"></div>
       <div class="receipt-row"><span>Subtotal</span><strong>{{ money(receipt.total) }}</strong></div>
-      <div class="receipt-row cash"><span>Efectivo</span><strong>{{ money(cashReceived) }}</strong></div>
-      <div class="receipt-row change" v-if="cashReceived > receipt.total"><span>Cambio</span><strong>{{ money(cashReceived - receipt.total) }}</strong></div>
+      <template v-if="paymentMethod === 'efectivo'">
+        <div class="receipt-row cash"><span>Efectivo</span><strong>{{ money(cashReceived) }}</strong></div>
+        <div class="receipt-row change" v-if="cashReceived > receipt.total"><span>Cambio</span><strong>{{ money(cashReceived - receipt.total) }}</strong></div>
+      </template>
+      <template v-else>
+        <div class="receipt-row"><span>Método</span><strong>Tarjeta</strong></div>
+      </template>
       <div class="receipt-divider"></div>
       <p class="receipt-footer mono muted">{{ new Date().toLocaleString("es-HN") }}</p>
       <button class="primary-button full" type="button" @click="emit('close')">Nueva venta</button>

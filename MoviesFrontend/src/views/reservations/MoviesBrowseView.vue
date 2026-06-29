@@ -25,8 +25,8 @@
         <div class="card-body">
           <span class="pill">{{ movie.activo ? 'En cartelera' : 'Inactivo' }}</span>
           <h2>{{ movie.title }}</h2>
-          <p>{{ movie.genre }} · {{ movie.language }} · {{ movie.duration }}</p>
-          <p>{{ movie.releaseDate ? 'Estreno: ' + movie.releaseDate : 'Próximamente' }}</p>
+          <p>{{ movie.genre }} · {{ movie.language }}</p>
+          <p class="muted">{{ movie.releaseDate ? 'Estreno: ' + formatDate(movie.releaseDate) : 'Próximamente' }}</p>
           <button class="primary-button" type="button" @click="router.push(`/reservas/peliculas/${movie.id}`)">Ver funciones</button>
         </div>
       </article>
@@ -43,7 +43,7 @@ import { useFormat } from "../../composables/use-format";
 
 const router = useRouter();
 const catalog = useCatalogStore();
-const { imageUrl } = useFormat();
+const { formatDate, imageUrl } = useFormat();
 
 const search = ref("");
 const genreFilter = ref("");
