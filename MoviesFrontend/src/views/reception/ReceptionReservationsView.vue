@@ -87,7 +87,10 @@ const payErrors = reactive<Record<string, string>>({});
 
 const receptionReservations = computed(() => {
   const query = receptionSearch.value.toLowerCase();
+  const now = Date.now();
   return reservations.value.filter((reservation) => {
+    const showDate = new Date(`${reservation.date}T${reservation.time}:00`);
+    if (showDate.getTime() <= now) return false;
     const movie = movieFor(reservation.movieId)?.title.toLowerCase() ?? "";
     return !query
       || reservation.id.toLowerCase().includes(query)

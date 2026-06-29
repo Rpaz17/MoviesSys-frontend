@@ -7,7 +7,7 @@
       </div>
     </div>
 
-    <div v-if="myReservations.length === 0" class="empty-state card">Aún no tienes reservas activas.</div>
+    <div v-if="myReservations.length === 0" class="empty-state card">No tienes reservas activas proximas.</div>
 
     <div v-else class="stack">
       <article v-for="reservation in myReservations" :key="reservation.id" class="card reservation-row">
@@ -64,7 +64,11 @@ const selectedReservation = ref<Reservation | null>(null);
 const cancelTarget = ref<Reservation | null>(null);
 
 const myReservations = computed(() =>
-  reservations.value.filter((item) => item.customerEmail === session.user?.email),
+  reservations.value.filter((item) => {
+    if (item.customerEmail !== session.user?.email) return false;
+    const showDate = new Date(`${item.date}T${item.time}:00`);
+    return showDate.getTime() > Date.now();
+  }),
 );
 
 function openCancel(reservation: Reservation) {

@@ -110,7 +110,9 @@ const availableFunciones = computed(() =>
     const movie = catalog.movieById(item.movieId);
     const cinema = catalog.cinemaById(item.cinemaId);
     const query = search.value.toLowerCase();
+    const isFuture = new Date(item.fecha_hora).getTime() > Date.now();
     return (
+      isFuture &&
       (!query || movie?.title.toLowerCase().includes(query)) &&
       (!genreFilter.value || movie?.genre === genreFilter.value) &&
       (!languageFilter.value || movie?.language === languageFilter.value) &&

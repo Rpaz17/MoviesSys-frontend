@@ -23,13 +23,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
 import { useReservationsStore } from "../../stores/reservations";
 import { useCatalogStore } from "../../stores/catalog";
 import { useCatalogHelpers } from "../../composables/use-catalog-helpers";
 import { useFormat } from "../../composables/use-format";
+import type { Reservation } from "../../types";
 
 const route = useRoute();
 const router = useRouter();
@@ -42,6 +43,18 @@ const { money, formatDate } = useFormat();
 const reservationId = computed(() => String(route.params.reservationId));
 const reservation = computed(() => reservations.value.find((r) => r.id === reservationId.value));
 const movie = computed(() => (reservation.value ? catalog.movieById(reservation.value.movieId) : undefined));
+
+function isPast(reservation: Reservation) {
+  const showDate = new Date(`${reservation.date}T${reservation.time}:00`);
+  return showDate.getTime() <= Date.now();
+}
+
+onMounted(() => {
+  const r = reservation.value;
+  if (r && isPast(r)) {
+    router.replace("/");
+  }
+});
 </script>
 
 <style scoped>
