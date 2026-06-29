@@ -10,6 +10,16 @@ export const createReservaInputSchema = z.object({
 });
 export type CreateReservaInput = z.infer<typeof createReservaInputSchema>;
 
+export const reservaAsientoItemSchema = z
+  .object({
+    asientosfuncion: z.object({
+      asientos: z.object({
+        codigo: z.string(),
+      }),
+    }),
+  })
+  .passthrough();
+
 export const reservaSchema = z.object({
   id: z.union([z.string(), z.number()]),
   numero_reserva: z.string().optional(),
@@ -18,29 +28,39 @@ export const reservaSchema = z.object({
   estado: z.string().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
-  total_asientos: z.number().optional(),
-  usuario: z.object({
-    id: z.union([z.string(), z.number()]),
-    nombre: z.string(),
-    email: z.string(),
-  }).optional(),
-  funcion: z.object({
-    id: z.union([z.string(), z.number()]),
-    fecha_hora: z.string(),
-    estado: z.string(),
-    pelicula: z.object({
-      id: z.union([z.string(), z.number()]),
-      titulo: z.string(),
-    }).optional(),
-    sala: z.object({
+  reservaAsientos: z.array(reservaAsientoItemSchema).optional(),
+  usuarios: z
+    .object({
       id: z.union([z.string(), z.number()]),
       nombre: z.string(),
-      cine: z.object({
-        id: z.union([z.string(), z.number()]),
-        nombre: z.string(),
-      }).optional(),
-    }).optional(),
-  }).optional(),
+      email: z.string(),
+    })
+    .optional(),
+  funciones: z
+    .object({
+      id: z.union([z.string(), z.number()]),
+      fecha_hora: z.string(),
+      estado: z.string().optional(),
+      peliculas: z
+        .object({
+          id: z.union([z.string(), z.number()]),
+          titulo: z.string(),
+        })
+        .optional(),
+      salas: z
+        .object({
+          id: z.union([z.string(), z.number()]),
+          nombre: z.string(),
+          cines: z
+            .object({
+              id: z.union([z.string(), z.number()]),
+              nombre: z.string(),
+            })
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 export type ReservaAPI = z.infer<typeof reservaSchema>;
 
@@ -119,6 +139,12 @@ export const reservasService = {
 
   async findAll(): Promise<ReservaAPI[]> {
     const { data } = await apiClient.get("/reservas");
+    // API returns object with numeric keys; convert to array
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      return Object.values(data).map((item: unknown) =>
+        reservaSchema.parse(item),
+      );
+    }
     return z.array(reservaSchema).parse(data);
   },
 
@@ -127,7 +153,10 @@ export const reservasService = {
     return reservaSchema.parse(data);
   },
 
-  async update(id: number | string, payload: { estado: string }): Promise<void> {
+  async update(
+    id: number | string,
+    payload: { estado: string },
+  ): Promise<void> {
     await apiClient.patch(`/reservas/${id}`, payload);
   },
 
@@ -149,7 +178,9 @@ export const reservasService = {
     return pagoResponseSchema.parse(data);
   },
 
-  async validateCoupon(payload: ValidateCuponInput): Promise<z.infer<typeof validateCuponResponseSchema> | null> {
+  async validateCoupon(
+    payload: ValidateCuponInput,
+  ): Promise<z.infer<typeof validateCuponResponseSchema> | null> {
     try {
       const { data } = await apiClient.post("/cupones/validar", payload);
       return validateCuponResponseSchema.parse(data);
@@ -163,7 +194,9 @@ export const reservasService = {
     return z.array(cuponSchema).parse(data);
   },
 
-  async calculateRefund(payload: { id_pago: number }): Promise<z.infer<typeof reembolsoResponseSchema> | null> {
+  async calculateRefund(payload: {
+    id_pago: number;
+  }): Promise<z.infer<typeof reembolsoResponseSchema> | null> {
     try {
       const { data } = await apiClient.post("/reembolsos", payload);
       return reembolsoResponseSchema.parse(data);

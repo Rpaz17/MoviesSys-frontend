@@ -137,6 +137,10 @@ export interface Reservation {
   showtimeId:    string;
   cinemaId:      string;
   roomId:        string;
+  movieTitle?:   string;
+  cinemaName?:   string;
+  roomName?:     string;
+  numeroReserva?: string;
   date:          string;
   time:          string;
   seats:         string[];

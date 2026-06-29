@@ -1,41 +1,34 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useCatalogHelpers } from "../composables/use-catalog-helpers";
 import { useFormat } from "../composables/use-format";
 import type { Reservation } from "../types";
 
 const props = defineProps<{ reservation: Reservation }>();
 const emit = defineEmits<{ close: [] }>();
 
-const { movieFor, cinemaFor, roomFor } = useCatalogHelpers();
 const { money, formatDate } = useFormat();
 
-const detailMovie = computed(() => movieFor(props.reservation.movieId));
-const detailCinema = computed(() => cinemaFor(props.reservation.cinemaId));
-const detailRoom = computed(() => roomFor(props.reservation.roomId));
-
-const detailStatusClass = computed(() => {
+const detailStatusClass = () => {
   if (props.reservation.status === "cancelada") return "status-canceled";
   return props.reservation.paymentStatus === "pagado" ? "status-paid" : "status-pending";
-});
+};
 
-const detailStatusLabel = computed(() => {
+const detailStatusLabel = () => {
   if (props.reservation.status === "cancelada") return "Cancelada";
   return props.reservation.paymentStatus === "pagado" ? "Pagado" : "Pendiente";
-});
+};
 </script>
 
 <template>
   <div class="modal-backdrop" @click.self="emit('close')">
     <article class="modal-card detail-modal">
-      <span class="pill" :class="detailStatusClass">{{ detailStatusLabel }}</span>
-      <h2>{{ detailMovie?.title }}</h2>
-      <p class="detail-id mono muted">Reserva #{{ reservation.id }}</p>
+      <span class="pill" :class="detailStatusClass()">{{ detailStatusLabel() }}</span>
+      <h2>{{ reservation.movieTitle ?? "Película" }}</h2>
+      <p class="detail-id mono muted">Reserva #{{ reservation.numeroReserva ?? reservation.id }}</p>
       <div class="receipt-divider"></div>
       <div class="receipt-row"><span>Cliente</span><strong>{{ reservation.customerName }}</strong></div>
       <div class="receipt-row"><span>Correo</span><strong style="font-size:.8125rem">{{ reservation.customerEmail }}</strong></div>
-      <div class="receipt-row"><span>Cine</span><strong>{{ detailCinema?.name }}</strong></div>
-      <div class="receipt-row"><span>Sala</span><strong>{{ detailRoom?.name }} · {{ detailRoom?.type }}</strong></div>
+      <div class="receipt-row"><span>Cine</span><strong>{{ reservation.cinemaName }}</strong></div>
+      <div class="receipt-row"><span>Sala</span><strong>{{ reservation.roomName }}</strong></div>
       <div class="receipt-row"><span>Fecha</span><strong>{{ formatDate(reservation.date) }} · {{ reservation.time }}</strong></div>
       <div class="receipt-divider"></div>
       <div class="receipt-row"><span>Asientos</span><strong>{{ reservation.seats.join(", ") }}</strong></div>
