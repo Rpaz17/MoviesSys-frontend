@@ -15,40 +15,38 @@
 
       <form class="card form-card" @submit.prevent="saveMovie">
         <div class="form-grid">
-          <label class="field">Título<input v-model="movieForm.title" class="input" required /></label>
-          <label class="field">Género<input v-model="movieForm.genre" class="input" list="movie-genres" required /></label>
-          <label class="field">Idioma<input v-model="movieForm.language" class="input" list="movie-languages" required /></label>
-          <label class="field">Clasificación<input v-model="movieForm.rating" class="input" required /></label>
-          <label class="field">Duración<input v-model="movieForm.duration" class="input" required /></label>
-          <label class="field">Estreno<input v-model="movieForm.releaseDate" class="input" type="date" required /></label>
-          <label class="field">Director<input v-model="movieForm.director" class="input" required /></label>
-          <label class="field">Estado
-            <select v-model="movieForm.status" class="input">
-              <option value="en-cartelera">En cartelera</option>
-              <option value="proximamente">Próximamente</option>
-              <option value="inactivo">Inactivo</option>
+          <label class="field wide">Título
+            <input v-model="movieForm.title" class="input" required maxlength="200" />
+          </label>
+          <label class="field wide">Sinopsis
+            <textarea v-model="movieForm.sinopsis" class="input textarea" rows="4" required></textarea>
+          </label>
+          <label class="field">Género
+            <select v-model="movieForm.genreId" class="input">
+              <option value="">Seleccionar</option>
+              <option v-for="genre in generos" :key="genre.id" :value="String(genre.id)">{{ genre.nombre }}</option>
             </select>
           </label>
-          <label class="field wide">URL de imagen
-            <input v-model="movieForm.img" class="input" placeholder="photo-1489599849927-2ee91cede3ba o https://..." />
+          <label class="field">Idioma
+            <select v-model="movieForm.languageId" class="input">
+              <option value="">Seleccionar</option>
+              <option v-for="language in idiomas" :key="language.id" :value="String(language.id)">{{ language.nombre }}</option>
+            </select>
           </label>
-          <div class="field wide">
-            <span class="sample-label">Pósters de muestra</span>
-            <div class="sample-row">
-              <button v-for="sample in POSTER_SAMPLES" :key="sample.url" type="button" class="sample-chip" :class="{ active: movieForm.img === sample.url }" @click="movieForm.img = sample.url">{{ sample.label }}</button>
-            </div>
-          </div>
-          <label class="field wide">Subir archivo
-            <input class="input" type="file" accept="image/*" @change="loadMovieImage" />
+          <label class="field">Estreno
+            <input v-model="movieForm.releaseDate" class="input" type="date" />
+          </label>
+          <label v-if="isEdit" class="field">
+            <span class="checkbox-label">
+              <input v-model="movieForm.activo" type="checkbox" />
+              Película activa
+            </span>
+          </label>
+          <label class="field wide">URL del póster
+            <input v-model="movieForm.posterUrl" class="input" placeholder="https://..." required />
           </label>
         </div>
-        <datalist id="movie-genres">
-          <option v-for="genre in generos" :key="genre.id" :value="genre.nombre" />
-        </datalist>
-        <datalist id="movie-languages">
-          <option v-for="language in idiomas" :key="language.id" :value="language.nombre" />
-        </datalist>
-        <img v-if="movieForm.img" class="poster-preview" :src="imageUrl(movieForm.img)" :alt="movieForm.title" />
+        <img v-if="movieForm.posterUrl" class="poster-preview" :src="movieForm.posterUrl" :alt="movieForm.title" />
         <p v-if="feedback" class="form-feedback" :class="feedbackType">{{ feedback }}</p>
         <div class="form-actions">
           <button class="ghost-button" type="button" @click="router.push('/admin/peliculas')">Cancelar</button>
@@ -65,43 +63,38 @@ import { useRoute, useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
 import { useSessionStore } from "../../stores/session";
-import { useFormat } from "../../composables/use-format";
-import { POSTER_SAMPLES } from "../../data/posterSamples";
 import { peliculasService, type Genero, type Idioma } from "../../services/peliculas.service";
-import type { CatalogMovie } from "../../types";
 
-type MovieFormState = CatalogMovie & {
-  status: "en-cartelera" | "proximamente" | "inactivo";
-};
+interface MovieFormState {
+  title: string;
+  sinopsis: string;
+  genreId: string;
+  languageId: string;
+  releaseDate: string;
+  posterUrl: string;
+  activo: boolean;
+}
 
 const route = useRoute();
 const router = useRouter();
 const catalog = useCatalogStore();
 const session = useSessionStore();
-const { imageUrl } = useFormat();
 
 const isEdit = computed(() => !!route.params.id);
 const isSaving = ref(false);
-const selectedPosterFile = ref<File | null>(null);
 const feedback = ref("");
 const feedbackType = ref<"success" | "error">("success");
 const generos = ref<Genero[]>([]);
 const idiomas = ref<Idioma[]>([]);
 
 const defaultMovieForm: MovieFormState = {
-  id: "",
   title: "",
-  genre: "",
-  language: "",
-  rating: "",
-  duration: "",
-  releaseDate: "",
-  director: "",
+  sinopsis: "",
+  genreId: "",
+  languageId: "",
+  releaseDate: new Date().toISOString().slice(0, 10),
+  posterUrl: "",
   activo: true,
-  status: "en-cartelera",
-  reservations: 0,
-  revenue: "$0",
-  img: "photo-1489599849927-2ee91cede3ba",
 };
 
 const movieForm = reactive<MovieFormState>({ ...defaultMovieForm });
@@ -131,101 +124,57 @@ async function hydrateEditForm() {
     return;
   }
 
+  const genreId = generos.value.find((g) => g.nombre === existing.genre)?.id ?? "";
+  const languageId = idiomas.value.find((g) => g.nombre === existing.language)?.id ?? "";
+
   Object.assign(movieForm, {
-    ...existing,
-    status: existing.activo ? "en-cartelera" : "inactivo",
+    title: existing.title,
+    sinopsis: existing.sinopsis,
+    genreId: String(genreId),
+    languageId: String(languageId),
+    releaseDate: existing.releaseDate ? existing.releaseDate.slice(0, 10) : "",
+    posterUrl: existing.img,
+    activo: existing.activo,
   });
-}
-
-function loadMovieImage(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  selectedPosterFile.value = file;
-  const reader = new FileReader();
-  reader.onload = () => {
-    movieForm.img = String(reader.result);
-  };
-  reader.readAsDataURL(file);
-}
-
-function normalize(value: string) {
-  return value.trim().toLocaleLowerCase("es");
-}
-
-function findCatalogId<T extends { id: string | number; nombre: string }>(items: T[], value: string) {
-  return items.find((item) => normalize(item.nombre) === normalize(value))?.id;
-}
-
-function buildSynopsis() {
-  const details = [movieForm.director && `Director: ${movieForm.director}`, movieForm.rating && `Clasificación: ${movieForm.rating}`, movieForm.duration && `Duración: ${movieForm.duration}`].filter(Boolean);
-  return details.length ? details.join(". ") : `Película ${movieForm.title}`;
-}
-
-function getPosterUrlForBackend() {
-  if (movieForm.img.startsWith("data:")) return "";
-  return imageUrl(movieForm.img);
-}
-
-async function savePoster(movieId: string | number) {
-  const posterUrl = getPosterUrlForBackend();
-  if (!posterUrl) {
-    throw new Error("El backend solo acepta una URL para el póster. Usa URL de imagen o un póster de muestra.");
-  }
-  const updated = await peliculasService.uploadPoster(movieId, { posterUrl });
-  movieForm.img = updated.poster_url ?? posterUrl;
-  selectedPosterFile.value = null;
-  return updated;
 }
 
 async function saveMovie() {
   feedback.value = "";
-  const genreId = findCatalogId(generos.value, movieForm.genre);
-  const languageId = findCatalogId(idiomas.value, movieForm.language);
-  const posterUrl = getPosterUrlForBackend();
 
   if (!session.user?.id) {
     feedbackType.value = "error";
-    feedback.value = "No se encontró el usuario autenticado para crear la película.";
-    return;
-  }
-  if (!genreId || !languageId) {
-    feedbackType.value = "error";
-    feedback.value = "Selecciona un género e idioma existentes.";
-    return;
-  }
-  if (!posterUrl) {
-    feedbackType.value = "error";
-    feedback.value = "El backend solo acepta una URL para el póster. Usa URL de imagen o un póster de muestra.";
+    feedback.value = "No se encontró el usuario autenticado.";
     return;
   }
 
+  const fechaISO = movieForm.releaseDate
+    ? new Date(movieForm.releaseDate + "T00:00:00").toISOString()
+    : undefined;
+
   isSaving.value = true;
   try {
-    if (isEdit.value && movieForm.id) {
-      const updated = await peliculasService.update(movieForm.id, {
+    if (isEdit.value && route.params.id) {
+      const movieId = String(route.params.id);
+      await peliculasService.update(movieId, {
         titulo: movieForm.title,
-        sinopsis: buildSynopsis(),
-        poster_url: posterUrl,
-        fecha_estreno: movieForm.releaseDate,
-        id_genero: Number(genreId),
-        id_idioma: Number(languageId),
-        activo: movieForm.status !== "inactivo",
+        sinopsis: movieForm.sinopsis,
+        poster_url: movieForm.posterUrl,
+        fecha_estreno: fechaISO,
+        id_idioma: movieForm.languageId ? Number(movieForm.languageId) : undefined,
+        id_genero: movieForm.genreId ? Number(movieForm.genreId) : undefined,
+        activo: movieForm.activo,
       });
-      await savePoster(movieForm.id);
-      movieForm.id = String(updated.id);
       feedback.value = "Película actualizada correctamente.";
     } else {
-      const created = await peliculasService.create({
+      await peliculasService.create({
         titulo: movieForm.title,
-        sinopsis: buildSynopsis(),
-        poster_url: posterUrl,
-        genero: String(genreId),
-        idioma: String(languageId),
-        fecha_estreno: movieForm.releaseDate,
+        sinopsis: movieForm.sinopsis,
+        poster_url: movieForm.posterUrl,
+        idioma: movieForm.languageId || undefined,
+        genero: movieForm.genreId || undefined,
+        fecha_estreno: fechaISO,
         uploaded_by: session.user.id,
       });
-      movieForm.id = String(created.id);
-      await savePoster(created.id);
       feedback.value = "Película creada correctamente.";
     }
     feedbackType.value = "success";
@@ -253,14 +202,12 @@ h1 { font-size: clamp(20px, 2.5vw, 30px); font-weight: 600; color: #f0ece4; marg
 .wide { grid-column: 1 / -1; }
 .form-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .poster-preview { width: min(280px, 100%); aspect-ratio: 2 / 3; object-fit: cover; border-radius: 3px; border: 1px solid rgba(200,169,110,.14); }
-.sample-label { font-size: .75rem; color: #7a7590; }
-.sample-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.sample-chip { font-size: .75rem; padding: .3125rem .625rem; border-radius: 3px; color: #9e9ab0; border: 1px solid rgba(200,169,110,0.14); background: rgba(255,255,255,0.02); transition: background .12s, border-color .12s, color .12s; cursor: pointer; }
-.sample-chip:hover { background: rgba(200,169,110,0.08); border-color: rgba(200,169,110,0.28); color: #c8a96e; }
-.sample-chip.active { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.35); color: #c8a96e; }
 .form-feedback { border-radius: 3px; padding: .75rem .875rem; font-size: .8125rem; margin: 0; }
 .form-feedback.success { color: #4caf7d; background: rgba(76,175,125,.08); border: 1px solid rgba(76,175,125,.18); }
 .form-feedback.error { color: #e8607a; background: rgba(200,16,46,.08); border: 1px solid rgba(200,16,46,.2); }
+.textarea { resize: vertical; min-height: 80px; }
+.checkbox-label { display: flex; align-items: center; gap: 8px; color: #f0ece4; font-size: .875rem; cursor: pointer; }
+.checkbox-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #c8a96e; cursor: pointer; }
 @media (max-width: 900px) {
   .section-header, .form-actions { align-items: stretch; flex-direction: column; }
   .form-grid { grid-template-columns: 1fr; }

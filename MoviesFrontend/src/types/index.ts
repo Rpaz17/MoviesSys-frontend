@@ -34,6 +34,7 @@ export type SortDir = "asc" | "desc";
 export interface CatalogMovie {
   id:           string;
   title:        string;
+  sinopsis:     string;
   genre:        string;
   language:     string;
   rating:       string;

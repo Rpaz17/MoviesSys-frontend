@@ -1,6 +1,6 @@
 import { ref, type MaybeRefOrGetter, toValue } from "vue";
 import { peliculasService } from "../services/peliculas.service";
-import type { Pelicula, CreatePeliculaInput, UpdatePeliculaInput, UploadPosterInput, FuncionCine } from "../services/peliculas.service";
+import type { Pelicula, CreatePeliculaInput, UpdatePeliculaInput, FuncionCine } from "../services/peliculas.service";
 
 export interface PeliculaFilters {
   titulo?: MaybeRefOrGetter<string | undefined>;
@@ -85,26 +85,6 @@ export function usePeliculas() {
     }
   }
 
-  async function uploadPoster(
-    id: number | string,
-    payload: UploadPosterInput,
-  ): Promise<boolean> {
-    isPending.value = true;
-    error.value = null;
-    try {
-      await peliculasService.uploadPoster(id, payload);
-      const idx = peliculas.value.findIndex((p) => String(p.id) === String(id));
-      if (idx !== -1) peliculas.value[idx] = { ...peliculas.value[idx], poster_url: payload.posterUrl };
-      return true;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error al subir póster";
-      error.value = msg;
-      return false;
-    } finally {
-      isPending.value = false;
-    }
-  }
-
   async function fetchFunciones(
     peliculaId: number | string,
     cineId: number | string,
@@ -134,6 +114,5 @@ export function usePeliculas() {
     filtrar,
     createPelicula,
     updatePelicula,
-    uploadPoster,
   };
 }

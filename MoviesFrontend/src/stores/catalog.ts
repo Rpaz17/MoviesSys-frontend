@@ -61,6 +61,7 @@ export const useCatalogStore = defineStore("catalog", () => {
       movies.value = data.map((m) => ({
         id: String(m.id),
         title: m.titulo,
+        sinopsis: m.sinopsis ?? "",
         genre: generoNames.value.get(String(m.id_genero)) ?? "Desconocido",
         language: idiomaNames.value.get(String(m.id_idioma)) ?? "Desconocido",
         rating: "NR",
