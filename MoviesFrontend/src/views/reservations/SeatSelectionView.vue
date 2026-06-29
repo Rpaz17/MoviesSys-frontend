@@ -5,11 +5,7 @@
                 <p class="eyebrow">Reserva de entradas</p>
                 <h1>Selecciona tus asientos</h1>
             </div>
-            <button
-                class="ghost-button"
-                type="button"
-                @click="router.push('/reservas/funciones')"
-            >
+            <button class="ghost-button" type="button" @click="router.push('/reservas/funciones')">
                 Volver a funciones
             </button>
         </div>
@@ -26,37 +22,24 @@
             <article class="card seat-card">
                 <div class="screen">Pantalla</div>
                 <div class="seat-scroll" aria-label="Mapa de asientos">
-                    <div
-                        class="seat-map"
-                        :style="{
-                            gridTemplateColumns: `repeat(${gridCols || 10}, 48px)`,
-                        }"
-                    >
-                        <button
-                            v-for="asiento in seatList"
-                            :key="asiento.id"
-                            type="button"
-                            class="seat"
-                            :class="{
-                                reserved: isReserved(asiento),
-                                selected: isSelected(asiento),
-                            }"
-                            :disabled="isReserved(asiento)"
-                            @click="toggleSeat(asiento)"
-                        >
+                    <div class="seat-map" :style="{
+                        gridTemplateColumns: `repeat(${gridCols || 10}, 48px)`,
+                    }">
+                        <button v-for="asiento in seatList" :key="asiento.id" type="button" class="seat" :class="{
+                            reserved: isReserved(asiento),
+                            selected: isSelected(asiento),
+                        }" :disabled="isReserved(asiento)" @click="toggleSeat(asiento)">
                             {{ asiento.label }}
                         </button>
                     </div>
                 </div>
                 <div class="legend">
                     <span><i class="seat-dot available"></i>Disponible</span>
-                    <span
-                        ><i class="seat-dot selected-dot"></i>Seleccionado</span
-                    >
+                    <span><i class="seat-dot selected-dot"></i>Seleccionado</span>
                     <span><i class="seat-dot reserved-dot"></i>Reservado</span>
                     <span v-if="blockingError" class="error-msg">{{
                         blockingError
-                    }}</span>
+                        }}</span>
                 </div>
             </article>
 
@@ -68,7 +51,7 @@
                     <span>Asientos</span>
                     <strong class="selected-seat-list">{{
                         selectedSeatLabels.join(", ") || "Sin seleccionar"
-                    }}</strong>
+                        }}</strong>
                 </div>
                 <div class="summary-line countdown">
                     <span>Bloqueo</span>
@@ -79,16 +62,8 @@
                     <strong>{{ money(subtotal) }}</strong>
                 </div>
                 <div class="coupon-row">
-                    <input
-                        v-model.trim="couponCode"
-                        class="input"
-                        placeholder="Cupón"
-                    />
-                    <button
-                        class="ghost-button"
-                        type="button"
-                        @click="applyCoupon"
-                    >
+                    <input v-model.trim="couponCode" class="input" placeholder="Cupón" />
+                    <button class="ghost-button" type="button" @click="applyCoupon">
                         Aplicar
                     </button>
                 </div>
@@ -111,16 +86,8 @@
                     </select>
                 </label>
                 <div v-if="paymentMethod === 'tarjeta'" class="payment-grid">
-                    <input
-                        v-model="cardNumber"
-                        class="input"
-                        placeholder="Número de tarjeta"
-                    />
-                    <input
-                        v-model="cardExpiry"
-                        class="input"
-                        placeholder="MM/AA"
-                    />
+                    <input v-model="cardNumber" class="input" placeholder="Número de tarjeta" />
+                    <input v-model="cardExpiry" class="input" placeholder="MM/AA" />
                     <input v-model="cardCvv" class="input" placeholder="CVV" />
                 </div>
                 <p class="policy-box">
@@ -128,12 +95,8 @@
                     depende de la política configurada y se verá en Mis
                     reservas.
                 </p>
-                <button
-                    class="primary-button full"
-                    type="button"
-                    :disabled="!canConfirm || isConfirming"
-                    @click="confirmReservation"
-                >
+                <button class="primary-button full" type="button" :disabled="!canConfirm || isConfirming"
+                    @click="confirmReservation">
                     {{
                         isConfirming
                             ? "Bloqueando asientos..."
@@ -217,18 +180,18 @@ const isConfirming = ref(false);
 const lockedUntil = ref(0);
 const now = ref(Date.now());
 let timer: number | undefined;
+const appliedCouponCode = ref("");
+const appliedCouponType = ref("");
+const appliedCouponValue = ref(0);
 
 // ── Derived data ────────────────────────────────────────────────────────────────
 const unitPrice = ref(7);
 const subtotal = computed(() => selectedSeats.value.length * unitPrice.value);
-const appliedCoupon = computed(() =>
-    coupons.value.find((c) => c.id === appliedCouponId.value),
-);
 const discount = computed(() => {
-    if (!appliedCoupon.value) return 0;
-    return appliedCoupon.value.type === "porcentaje"
-        ? subtotal.value * (appliedCoupon.value.value / 100)
-        : appliedCoupon.value.value;
+    if (!appliedCouponCode.value) return 0;
+    return appliedCouponType.value === "porcentaje"
+        ? subtotal.value * (appliedCouponValue.value / 100)
+        : appliedCouponValue.value;
 });
 const total = computed(() => Math.max(0, subtotal.value - discount.value));
 const canConfirm = computed(
@@ -337,18 +300,28 @@ function toggleSeat(asiento: SeatItem) {
 }
 
 // ── Coupon & reservation ────────────────────────────────────────────────────────
-function applyCoupon() {
-    const code = couponCode.value.toUpperCase();
-    const coupon = coupons.value.find(
-        (item) =>
-            item.code === code &&
-            item.active &&
-            new Date(item.expiresAt) >= new Date(),
-    );
-    appliedCouponId.value = coupon?.id ?? "";
-    couponMessage.value = coupon
-        ? `Cupón ${coupon.code} aplicado.`
-        : "Cupón no disponible o vencido.";
+async function applyCoupon() {
+    if (!couponCode.value) {
+        couponMessage.value = "";
+        appliedCouponId.value = "";
+        appliedCouponCode.value = "";
+        return;
+    }
+
+    const code = couponCode.value.toUpperCase().trim();
+    const result = await reservasService.validateCoupon({ codigo: code });
+
+    if (result) {
+        appliedCouponCode.value = code;
+        appliedCouponType.value = result.tipo;
+        appliedCouponValue.value = Number(result.valor);
+        couponMessage.value = `Cupón ${code} aplicado.`;
+    } else {
+        appliedCouponCode.value = "";
+        appliedCouponType.value = "";
+        appliedCouponValue.value = 0;
+        couponMessage.value = "Cupón no disponible, expirado, o agotado.";
+    }
 }
 
 async function confirmReservation() {
@@ -408,8 +381,8 @@ async function confirmReservation() {
             id_reserva: Number(reservaCreada.id),
             metodo: paymentMethod.value,
             precio_por_asiento: unitPrice.value,
-            ...(appliedCoupon.value?.code
-                ? { codigo_cupon: appliedCoupon.value.code }
+            ...(appliedCouponCode.value
+                ? { codigo_cupon: appliedCouponCode.value }
                 : {}),
         });
     } catch {
@@ -446,7 +419,7 @@ async function confirmReservation() {
         paymentStatus: "pagado",
         paymentMethod: paymentMethod.value,
         transactionId: `TX-${Date.now()}`,
-        couponCode: appliedCoupon.value?.code,
+        couponCode: appliedCouponCode.value || undefined,
         discount: discount.value,
         total: total.value,
         createdAt: new Date().toISOString().slice(0, 10),
@@ -470,6 +443,7 @@ async function confirmReservation() {
     width: min(100%, 1100px);
     margin: 0 auto 24px;
 }
+
 .eyebrow {
     color: #c8a96e;
     font-family: "DM Mono", monospace;
@@ -478,6 +452,7 @@ async function confirmReservation() {
     letter-spacing: 0.09em;
     margin: 0 0 4px;
 }
+
 h1 {
     font-size: clamp(22px, 3vw, 34px);
     font-weight: 600;
@@ -486,23 +461,27 @@ h1 {
     font-family: "Playfair Display", serif;
     letter-spacing: -0.01em;
 }
+
 h2 {
     color: #f0ece4;
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
 }
+
 p {
     color: #7a7590;
     margin: 0;
     font-size: 0.875rem;
 }
+
 .empty-state {
     padding: 3rem 1.5rem;
     text-align: center;
     color: #7a7590;
     font-size: 0.875rem;
 }
+
 .booking-grid {
     width: min(100%, 1100px);
     margin: 0 auto;
@@ -511,11 +490,13 @@ p {
     gap: 18px;
     align-items: start;
 }
+
 .seat-card {
     min-width: 0;
     padding: 1.25rem;
     overflow: hidden;
 }
+
 .screen {
     text-align: center;
     padding: 8px;
@@ -527,6 +508,7 @@ p {
     text-transform: uppercase;
     font-family: "DM Mono", monospace;
 }
+
 .seat-scroll {
     overflow-x: auto;
     overflow-y: hidden;
@@ -534,18 +516,22 @@ p {
     scrollbar-width: thin;
     scrollbar-color: rgba(200, 169, 110, 0.4) rgba(255, 255, 255, 0.04);
 }
+
 .seat-scroll::-webkit-scrollbar {
     display: block;
     height: 6px;
 }
+
 .seat-scroll::-webkit-scrollbar-thumb {
     background: rgba(200, 169, 110, 0.4);
     border-radius: 999px;
 }
+
 .seat-scroll::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.04);
     border-radius: 999px;
 }
+
 .seat-map {
     display: grid;
     gap: 7px;
@@ -553,6 +539,7 @@ p {
     min-width: 100%;
     justify-content: center;
 }
+
 .seat {
     width: 44px;
     height: 38px;
@@ -566,22 +553,26 @@ p {
         background 0.1s,
         border-color 0.1s;
 }
+
 .seat:hover:not(:disabled) {
     background: rgba(200, 169, 110, 0.08);
     border-color: rgba(200, 169, 110, 0.3);
 }
+
 .seat.selected {
     background: #c8a96e;
     border-color: #c8a96e;
     color: #0a0a0f;
     font-weight: 600;
 }
+
 .seat.reserved {
     background: rgba(200, 60, 60, 0.18);
     color: rgba(255, 255, 255, 0.3);
     cursor: not-allowed;
     border-color: rgba(200, 60, 60, 0.2);
 }
+
 .legend {
     display: flex;
     gap: 14px;
@@ -590,6 +581,7 @@ p {
     color: #7a7590;
     font-size: 0.75rem;
 }
+
 .seat-dot {
     display: inline-block;
     width: 11px;
@@ -599,14 +591,17 @@ p {
     vertical-align: -1px;
     border: 1px solid rgba(200, 169, 110, 0.2);
 }
+
 .selected-dot {
     background: #c8a96e;
     border-color: #c8a96e;
 }
+
 .reserved-dot {
     background: rgba(200, 60, 60, 0.45);
     border-color: rgba(200, 60, 60, 0.3);
 }
+
 .checkout-card {
     display: grid;
     gap: 12px;
@@ -615,6 +610,7 @@ p {
     position: sticky;
     top: 72px;
 }
+
 .field {
     display: grid;
     gap: 6px;
@@ -622,6 +618,7 @@ p {
     font-size: 0.8125rem;
     font-weight: 500;
 }
+
 .summary-line {
     display: flex;
     justify-content: space-between;
@@ -629,31 +626,37 @@ p {
     align-items: center;
     font-size: 0.875rem;
 }
+
 .summary-line strong {
     text-align: right;
     color: #f0ece4;
 }
+
 .selected-seat-list {
     max-width: 180px;
     overflow-wrap: anywhere;
     font-size: 0.8125rem;
 }
+
 .summary-line.total {
     font-size: 1.0625rem;
     font-weight: 600;
     padding-top: 10px;
     border-top: 1px solid rgba(200, 169, 110, 0.12);
 }
+
 .coupon-row {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 7px;
 }
+
 .payment-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 88px 78px;
     gap: 7px;
 }
+
 .policy-box,
 .success-box {
     border-radius: 3px;
@@ -663,10 +666,12 @@ p {
     font-size: 0.8125rem;
     line-height: 1.5;
 }
+
 .success-box {
     color: #4caf7d;
     background: rgba(76, 175, 125, 0.06);
 }
+
 .error-box {
     color: #e06060;
     background: rgba(200, 60, 60, 0.06);
@@ -675,58 +680,72 @@ p {
     font-size: 0.8125rem;
     line-height: 1.5;
 }
+
 .error-msg {
     color: #e06060;
     font-size: 0.75rem;
 }
+
 .form-note {
     font-size: 0.75rem;
     color: #c8a96e;
     margin: 0;
 }
+
 .full {
     width: 100%;
 }
+
 .countdown strong {
     color: #c8a96e;
     font-family: "DM Mono", monospace;
 }
+
 @media (max-width: 900px) {
     .booking-grid {
         grid-template-columns: 1fr;
     }
+
     .checkout-card {
         position: static;
     }
+
     .payment-grid {
         grid-template-columns: 1fr;
     }
 }
+
 @media (max-width: 640px) {
     .section-header {
         align-items: stretch;
         flex-direction: column;
     }
+
     .section-header .ghost-button {
         justify-content: center;
         width: 100%;
     }
+
     .seat-card,
     .checkout-card {
         padding: 1rem;
     }
+
     .seat-map {
         gap: 5px;
         justify-content: start;
     }
+
     .seat {
         width: 38px;
         height: 34px;
         font-size: 10px;
     }
+
     .coupon-row {
         grid-template-columns: 1fr;
     }
+
     .summary-line {
         align-items: flex-start;
     }
