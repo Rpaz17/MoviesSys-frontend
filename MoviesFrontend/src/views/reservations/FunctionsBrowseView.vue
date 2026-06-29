@@ -106,19 +106,27 @@ function timeFrom(fecha_hora: string) {
 }
 
 const availableFunciones = computed(() =>
-  funciones.value.filter((item) => {
-    const movie = catalog.movieById(item.movieId);
-    const cinema = catalog.cinemaById(item.cinemaId);
-    const query = search.value.toLowerCase();
-    return (
-      (!query || movie?.title.toLowerCase().includes(query)) &&
-      (!genreFilter.value || movie?.genre === genreFilter.value) &&
-      (!languageFilter.value || movie?.language === languageFilter.value) &&
-      (!dateFilter.value || dateFrom(item.fecha_hora) === dateFilter.value) &&
-      (!cityFilter.value || cinema?.city === cityFilter.value) &&
-      (!cinemaFilter.value || item.cinemaId === cinemaFilter.value)
-    );
-  }),
+  funciones.value
+    .filter((item) => {
+      const movie = catalog.movieById(item.movieId);
+      const cinema = catalog.cinemaById(item.cinemaId);
+      const query = search.value.toLowerCase();
+      return (
+        (!query || movie?.title.toLowerCase().includes(query)) &&
+        (!genreFilter.value || movie?.genre === genreFilter.value) &&
+        (!languageFilter.value || movie?.language === languageFilter.value) &&
+        (!dateFilter.value || dateFrom(item.fecha_hora) === dateFilter.value) &&
+        (!cityFilter.value || cinema?.city === cityFilter.value) &&
+        (!cinemaFilter.value || item.cinemaId === cinemaFilter.value)
+      );
+    })
+    .sort((a, b) => {
+      const cmp = a.fecha_hora.localeCompare(b.fecha_hora);
+      if (cmp !== 0) return cmp;
+      const titleA = catalog.movieById(a.movieId)?.title ?? "";
+      const titleB = catalog.movieById(b.movieId)?.title ?? "";
+      return titleA.localeCompare(titleB);
+    }),
 );
 
 const showtimeGroups = computed(() =>
