@@ -50,15 +50,17 @@ const genreFilter = ref("");
 const languageFilter = ref("");
 
 const availableMovies = computed(() =>
-  catalog.movies.filter((movie) => {
-    const query = search.value.toLowerCase();
-    return (
-      movie.activo &&
-      (!query || movie.title.toLowerCase().includes(query)) &&
-      (!genreFilter.value || movie.genre === genreFilter.value) &&
-      (!languageFilter.value || movie.language === languageFilter.value)
-    );
-  }),
+  catalog.movies
+    .filter((movie) => {
+      const query = search.value.toLowerCase();
+      return (
+        movie.activo &&
+        (!query || movie.title.toLowerCase().includes(query)) &&
+        (!genreFilter.value || movie.genre === genreFilter.value) &&
+        (!languageFilter.value || movie.language === languageFilter.value)
+      );
+    })
+    .sort((a, b) => a.title.localeCompare(b.title)),
 );
 
 const genres = computed(() => [...new Set(catalog.movies.map((movie) => movie.genre))]);
