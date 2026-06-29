@@ -36,6 +36,7 @@ import AdminEditShowtimeView from "../views/admin/AdminEditShowtimeView.vue";
 import AdminReportsView from "../views/admin/AdminReportsView.vue";
 import AdminCouponsView from "../views/admin/AdminCouponsView.vue";
 import AdminCancellationPolicyView from "../views/admin/AdminCancellationPolicyView.vue";
+import AdminPaymentsHistoryView from "../views/admin/AdminPaymentsHistoryView.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -86,6 +87,7 @@ export const router = createRouter({
     { path: "/admin/reportes", name: "admin-reports", component: AdminReportsView, meta: { auth: true, role: "administrador" } },
     { path: "/admin/cupones", name: "admin-coupons", component: AdminCouponsView, meta: { auth: true, role: "administrador" } },
     { path: "/admin/cancelaciones", name: "admin-cancellations", component: AdminCancellationPolicyView, meta: { auth: true, role: "administrador" } },
+    { path: "/admin/pagos", name: "admin-payments-history", component: AdminPaymentsHistoryView, meta: { auth: true, role: "administrador" } },
   ],
 });
 
