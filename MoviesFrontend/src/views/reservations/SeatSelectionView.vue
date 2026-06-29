@@ -113,16 +113,30 @@
                 </label>
                 <div v-if="paymentMethod === 'tarjeta'" class="payment-grid">
                     <input
-                        v-model="cardNumber"
+                        :value="cardNumber"
                         class="input"
-                        placeholder="Número de tarjeta"
+                        placeholder="Numero de tarjeta"
+                        inputmode="numeric"
+                        maxlength="19"
+                        @input="onCardNumberInput"
                     />
                     <input
-                        v-model="cardExpiry"
+                        :value="cardExpiry"
                         class="input"
                         placeholder="MM/AA"
+                        inputmode="numeric"
+                        maxlength="5"
+                        @input="onCardExpiryInput"
                     />
-                    <input v-model="cardCvv" class="input" placeholder="CVV" />
+                    <input
+                        :value="cardCvv"
+                        class="input"
+                        placeholder="CVV"
+                        inputmode="numeric"
+                        maxlength="4"
+                        @input="onCardCvvInput"
+                    />
+                    <p v-if="cardError" class="error-msg">{{ cardError }}</p>
                 </div>
                 <p class="policy-box">
                     Puedes cancelar antes de la función. El reembolso estimado
@@ -202,6 +216,7 @@ const showtimeTime = computed(() => {
 
 const movie = computed(() => catalog.movieById(movieId.value));
 const cinema = computed(() => catalog.cinemaById(cinemaId.value));
+const showtimeRoomId = computed(() => catalog.showtimes.find((s) => s.id === showtimeId.value)?.roomId ?? "");
 
 // ── Seat state ──────────────────────────────────────────────────────────────────
 const selectedSeats = ref<string[]>([]); // asiento.id values
@@ -214,6 +229,7 @@ const paymentMethod = ref<PaymentMethod>("tarjeta");
 const cardNumber = ref("");
 const cardExpiry = ref("");
 const cardCvv = ref("");
+const cardError = ref("");
 const confirmation = ref("");
 const confirmationError = ref("");
 const isConfirming = ref(false);
@@ -239,7 +255,7 @@ const canConfirm = computed(
     () =>
         selectedSeats.value.length > 0 &&
         (paymentMethod.value !== "tarjeta" ||
-            Boolean(cardNumber.value && cardExpiry.value && cardCvv.value)),
+            (Boolean(cardNumber.value && cardExpiry.value && cardCvv.value) && !cardError.value)),
 );
 
 const gridCols = computed(() =>
@@ -312,6 +328,38 @@ function isBlockedByOther(asiento: SeatItem) {
 
 function isSelected(asiento: SeatItem) {
     return selectedSeats.value.includes(asiento.id);
+}
+
+function onCardNumberInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 16);
+    cardNumber.value = raw.replace(/(\d{4})(?=\d)/g, "$1 ").trim();
+    cardError.value = raw.length > 0 && raw.length < 16 ? "La tarjeta debe tener 16 digitos." : "";
+}
+
+function onCardExpiryInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+    if (raw.length >= 2) {
+        cardExpiry.value = raw.slice(0, 2) + "/" + raw.slice(2);
+    } else {
+        cardExpiry.value = raw;
+    }
+    if (raw.length === 4) {
+        const month = parseInt(raw.slice(0, 2), 10);
+        const year = parseInt(raw.slice(2), 10);
+        if (month < 1 || month > 12) cardError.value = "Mes invalido.";
+        else if (year < new Date().getFullYear() % 100) cardError.value = "La tarjeta ha expirado.";
+        else cardError.value = "";
+    } else if (raw.length > 0 && raw.length < 4) {
+        cardError.value = "Fecha incompleta.";
+    } else {
+        cardError.value = "";
+    }
+}
+
+function onCardCvvInput(e: Event) {
+    const raw = (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 4);
+    cardCvv.value = raw;
+    cardError.value = raw.length > 0 && raw.length < 3 ? "El CVV debe tener al menos 3 digitos." : "";
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────────
@@ -485,7 +533,7 @@ async function confirmReservation() {
         movieId: movieId.value,
         showtimeId: showtimeId.value,
         cinemaId: cinemaId.value,
-        roomId: showtimeId.value,
+        roomId: showtimeRoomId.value,
         date: showtimeDate.value,
         time: showtimeTime.value,
         seats: [...selectedSeatLabels.value],

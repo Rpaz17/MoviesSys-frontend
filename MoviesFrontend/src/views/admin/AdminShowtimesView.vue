@@ -29,7 +29,19 @@
           </div>
         </form>
         <div class="stack">
-          <article v-for="showtime in catalog.showtimes" :key="showtime.id" class="card list-row">
+          <div class="filters-bar">
+            <select v-model="filterMovie" class="input">
+              <option value="">Todas las peliculas</option>
+              <option v-for="movie in activeMovies" :key="movie.id" :value="movie.id">{{ movie.title }}</option>
+            </select>
+            <select v-model="filterCinema" class="input">
+              <option value="">Todos los cines</option>
+              <option v-for="cinema in activeCinemas" :key="cinema.id" :value="cinema.id">{{ cinema.name }}</option>
+            </select>
+            <input v-model="filterDateFrom" class="input" type="date" placeholder="Desde" />
+            <input v-model="filterDateTo" class="input" type="date" placeholder="Hasta" />
+          </div>
+          <article v-for="showtime in filteredShowtimes" :key="showtime.id" class="card list-row">
             <div>
               <h2>{{ movieFor(showtime.movieId)?.title }}</h2>
               <p>{{ cinemaFor(showtime.cinemaId)?.name }} · {{ roomFor(showtime.roomId)?.name }} · {{ showtime.date }} {{ showtime.time }}</p>
@@ -72,6 +84,11 @@ const cancelShowtimeTarget = ref<Showtime | null>(null);
 const isSaving = ref(false);
 const saveError = ref("");
 
+const filterMovie = ref("");
+const filterCinema = ref("");
+const filterDateFrom = ref("");
+const filterDateTo = ref("");
+
 const showtimeForm = reactive({
   movieId: "",
   cinemaId: "",
@@ -83,6 +100,15 @@ const showtimeForm = reactive({
 const activeMovies = computed(() => catalog.movies.filter((item) => item.activo));
 const activeCinemas = computed(() => catalog.cinemas.filter((item) => item.status === "activo"));
 const filteredRooms = computed(() => catalog.rooms.filter((room) => room.cinemaId === showtimeForm.cinemaId && room.status === "activo"));
+
+const filteredShowtimes = computed(() =>
+  catalog.showtimes.filter((s) =>
+    (!filterMovie.value || s.movieId === filterMovie.value) &&
+    (!filterCinema.value || s.cinemaId === filterCinema.value) &&
+    (!filterDateFrom.value || s.date >= filterDateFrom.value) &&
+    (!filterDateTo.value || s.date <= filterDateTo.value)
+  ),
+);
 
 watch(() => showtimeForm.cinemaId, () => {
   if (!filteredRooms.value.some((room) => room.id === showtimeForm.roomId)) showtimeForm.roomId = filteredRooms.value[0]?.id ?? "";
@@ -147,6 +173,7 @@ p, span { color: #7a7590; font-size: .875rem; margin: 0; }
 .form-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .admin-split { display: grid; grid-template-columns: minmax(300px, 440px) 1fr; gap: 16px; align-items: start; }
 .stack { display: grid; gap: 10px; }
+.filters-bar { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
 .list-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 1rem 1.125rem; }
 .row-actions { display: flex; gap: 7px; align-items: center; }
 .danger-button { border-radius: 3px; padding: .375rem .8125rem; font-size: .8125rem; font-weight: 500; color: #ffd8df; border: 1px solid rgba(232,96,122,.3); background: rgba(232,96,122,.08); transition: background .12s; cursor: pointer; }

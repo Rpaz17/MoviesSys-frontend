@@ -9,7 +9,6 @@ import ResetPasswordView from "../views/auth/ResetPasswordView.vue";
 import HomeRouterView from "../views/home/HomeRouterView.vue";
 
 import ProfileView from "../views/profile/ProfileView.vue";
-import PaymentMethodsView from "../views/profile/PaymentMethodsView.vue";
 import ChangePasswordView from "../views/profile/ChangePasswordView.vue";
 
 import FunctionsBrowseView from "../views/reservations/FunctionsBrowseView.vue";
@@ -54,7 +53,6 @@ export const router = createRouter({
 
     // Profile
     { path: "/profile", name: "profile", component: ProfileView, meta: { auth: true } },
-    { path: "/profile/payments", name: "payment-methods", component: PaymentMethodsView, meta: { auth: true, role: "cliente" } },
     { path: "/change-password", name: "change-password", component: ChangePasswordView, meta: { auth: true } },
 
     // Reservations
