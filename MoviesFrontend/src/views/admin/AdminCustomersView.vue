@@ -14,7 +14,7 @@
       </div>
 
       <div class="filters-card card">
-        <input v-model.trim="search" class="input" placeholder="Buscar por nombre o correo" @keyup.enter="fetchCustomers" />
+        <input v-model.trim="search" class="input" placeholder="Buscar por nombre o correo" @input="onSearchInput" />
         <select v-model="statusFilter" class="input" @change="fetchCustomers">
           <option value="">Todos los estados</option>
           <option value="active">Activo</option>
@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { LayoutDashboard } from "lucide-vue-next";
 import { useCatalogStore } from "../../stores/catalog";
@@ -74,6 +74,7 @@ const { formatDate } = useFormat();
 const search = ref("");
 const statusFilter = ref("");
 const isLoading = ref(false);
+let searchTimer: number | undefined;
 
 async function fetchCustomers() {
   isLoading.value = true;
@@ -89,8 +90,17 @@ async function fetchCustomers() {
   isLoading.value = false;
 }
 
+function onSearchInput() {
+  if (searchTimer) window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(fetchCustomers, 300);
+}
+
 onMounted(() => {
   fetchCustomers();
+});
+
+onUnmounted(() => {
+  if (searchTimer) window.clearTimeout(searchTimer);
 });
 </script>
 
